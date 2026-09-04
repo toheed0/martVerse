@@ -1,0 +1,4 @@
+# Dependencies (Heavy node modules ko ignore karne ke liye)
+node_modules/
+# Secrets & Environment Variables (Most Important)
+.env
