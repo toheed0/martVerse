@@ -1,0 +1,55 @@
+@import "tailwindcss";
+
+/* MartVerse design tokens.
+   Warm ivory canvas + deep pine + brass — a premium marketplace palette. */
+@theme {
+  /* Surfaces */
+  --color-canvas: #f7f4ee;
+  --color-surface: #ffffff;
+  --color-sand: #efe9df;
+
+  /* Text */
+  --color-ink: #1a1714;
+  --color-muted: #6b635a;
+  --color-line: #e4ddd2;
+
+  /* Brand */
+  --color-pine: #1e3d33;
+  --color-pine-soft: #2c5648;
+  --color-brass: #a98033;
+  --color-clay: #b4664a;
+
+  /* Product card tints */
+  --color-tint-1: #eae4d8;
+  --color-tint-2: #e2e7e0;
+  --color-tint-3: #eee2da;
+  --color-tint-4: #e6e3ec;
+
+  --font-display: var(--font-fraunces), ui-serif, Georgia, serif;
+  --font-sans: var(--font-manrope), ui-sans-serif, system-ui, sans-serif;
+}
+
+body {
+  background-color: var(--color-canvas);
+  color: var(--color-ink);
+  font-family: var(--font-sans);
+}
+
+/* Small caps label used above section headings */
+.eyebrow {
+  font-size: 0.6875rem;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  font-weight: 600;
+}
+
+::selection {
+  background-color: var(--color-pine);
+  color: var(--color-canvas);
+}
+
+/* Keep focus rings visible for keyboard users only */
+:focus-visible {
+  outline: 2px solid var(--color-pine);
+  outline-offset: 2px;
+}
