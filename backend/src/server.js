@@ -6,6 +6,8 @@ import cors from "cors";
 import cookieParser from "cookie-parser";
 import { connectDB } from "./config/db.js";
 import authRouter from "./routers/authRouter.js";
+import categoryRoutes from "./routers/categoryRoutes.js";
+import productRoutes from "./routers/productRoutes.js";
 
 const requiredEnv = ["MONGO_URI", "JWT_ACCESS_SECRET", "JWT_REFRESH_SECRET"];
 const missingEnv = requiredEnv.filter((key) => !process.env[key]);
@@ -33,6 +35,10 @@ app.get("/", (req, res) => {
 });
 
 app.use("/api/auth", authRouter);
+
+app.use("/api/categories", categoryRoutes);
+
+app.use("/api/products", productRoutes);
 
 app.use((req, res) => {
   res.status(404).json({

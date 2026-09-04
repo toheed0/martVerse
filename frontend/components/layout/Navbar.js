@@ -15,7 +15,7 @@ import {
 
 const navLinks = [
   { label: "New In", href: "/" },
-  { label: "Collections", href: "/" },
+  { label: "Categories", href: "/categories" },
   { label: "Vendors", href: "/" },
   { label: "Journal", href: "/" },
 ];
@@ -74,6 +74,14 @@ export default function Navbar() {
             <div className="ml-2 h-10 w-24 animate-pulse rounded-full bg-sand" />
           ) : isAuthenticated ? (
             <div className="ml-2 flex items-center gap-3">
+              {user.role === "admin" ? (
+                <Link
+                  href="/admin/categories"
+                  className="hidden h-10 items-center rounded-full border border-brass/40 px-4 text-xs font-semibold tracking-wider uppercase text-brass transition-colors hover:bg-brass/10 lg:flex"
+                >
+                  Admin
+                </Link>
+              ) : null}
               <Link
                 href="/profile"
                 className="hidden text-right sm:block"
@@ -151,6 +159,16 @@ export default function Navbar() {
                 <UserIcon className="h-4 w-4" />
                 My account
               </Link>
+
+              {user.role === "admin" ? (
+                <Link
+                  href="/admin/categories"
+                  onClick={() => setMenuOpen(false)}
+                  className="mt-2 flex h-11 items-center justify-center rounded-full border border-brass/40 text-sm font-semibold text-brass"
+                >
+                  Manage categories
+                </Link>
+              ) : null}
             </div>
           ) : (
             <div className="mt-3 grid grid-cols-2 gap-2 border-t border-line pt-3">
