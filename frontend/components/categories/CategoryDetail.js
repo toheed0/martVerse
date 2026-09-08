@@ -6,8 +6,8 @@ import Image from "next/image";
 import { useParams } from "next/navigation";
 import { useDispatch, useSelector } from "react-redux";
 import { fetchCategoryById } from "@/store/slices/categorySlice";
-import ProductArt from "@/components/home/ProductArt";
-import { ArrowIcon, BagIcon } from "@/components/ui/icons";
+import CategoryProducts from "./CategoryProducts";
+import { ArrowIcon } from "@/components/ui/icons";
 
 export default function CategoryDetail() {
   const { id } = useParams();
@@ -99,28 +99,15 @@ export default function CategoryDetail() {
       </div>
 
       <div className="mx-auto w-full max-w-7xl px-5 py-12 lg:px-8 lg:py-16">
-        <div className="flex flex-col items-center rounded-2xl border border-dashed border-line px-6 py-20 text-center">
-          <span className="flex h-14 w-14 items-center justify-center rounded-full bg-sand text-pine">
-            <BagIcon className="h-6 w-6" />
-          </span>
-          <p className="mt-5 font-display text-2xl font-semibold text-ink">
-            No products in {current.name} yet
-          </p>
-          <p className="mt-2 max-w-sm text-sm leading-relaxed text-muted">
-            Products aren&apos;t part of the backend yet. Once vendors start
-            listing, everything in this category will show up here.
-          </p>
-          <div className="mt-8 opacity-40">
-            <ProductArt name="bag" className="h-24 w-24 text-pine" />
-          </div>
-          <Link
-            href="/categories"
-            className="group mt-8 flex items-center gap-2 text-sm font-semibold text-ink"
-          >
-            Back to categories
-            <ArrowIcon className="h-4 w-4 transition-transform group-hover:translate-x-1" />
-          </Link>
-        </div>
+        <CategoryProducts category={current} />
+
+        <Link
+          href="/categories"
+          className="group mt-12 flex items-center gap-2 text-sm font-semibold text-ink"
+        >
+          Back to categories
+          <ArrowIcon className="h-4 w-4 transition-transform group-hover:translate-x-1" />
+        </Link>
       </div>
     </>
   );

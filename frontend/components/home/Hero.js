@@ -17,7 +17,7 @@ export default function Hero() {
       <div className="relative mx-auto grid max-w-7xl items-center gap-16 px-5 py-20 lg:grid-cols-12 lg:gap-10 lg:px-8 lg:py-28">
         <div className="lg:col-span-6">
           <p className="eyebrow flex items-center gap-3 text-brass">
-            <span className="h-px w-8 bg-brass" />
+            {/* <span className="h-px w-8 bg-brass" /> */}
             Curated marketplace
           </p>
 

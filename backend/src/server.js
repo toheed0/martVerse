@@ -8,6 +8,7 @@ import { connectDB } from "./config/db.js";
 import authRouter from "./routers/authRouter.js";
 import categoryRoutes from "./routers/categoryRoutes.js";
 import productRoutes from "./routers/productRoutes.js";
+import userRoutes from "./routers/userRoutes.js";
 
 const requiredEnv = ["MONGO_URI", "JWT_ACCESS_SECRET", "JWT_REFRESH_SECRET"];
 const missingEnv = requiredEnv.filter((key) => !process.env[key]);
@@ -39,6 +40,8 @@ app.use("/api/auth", authRouter);
 app.use("/api/categories", categoryRoutes);
 
 app.use("/api/products", productRoutes);
+
+app.use("/api/users", userRoutes);
 
 app.use((req, res) => {
   res.status(404).json({

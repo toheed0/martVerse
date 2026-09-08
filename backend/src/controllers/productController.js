@@ -1,4 +1,4 @@
-import { createProduct, getAllProducts, getProductById, updateProduct } from "../services/productService.js";
+import { createProduct, deleteProduct, getAllProducts, getProductById, getVendorProducts, updateProduct } from "../services/productService.js";
 
 export const createProductController = async (req, res) => {
   try {
@@ -19,7 +19,7 @@ export const createProductController = async (req, res) => {
     }
 
     const product = await createProduct({
-      vendorId: req.user.userId,
+      vendorId: req.user._id,
       categoryId,
       name,
       description,
@@ -82,6 +82,22 @@ export const getAllProductsController = async (req, res) => {
   }
 };
 
+export const getMyProductsController = async (req, res) => {
+  try {
+    const products = await getVendorProducts(req.user._id);
+
+    return res.status(200).json({
+      success: true,
+      products,
+    });
+  } catch (error) {
+    return res.status(500).json({
+      success: false,
+      message: error.message,
+    });
+  }
+};
+
 export const getProductByIdController = async (req, res) => {
   try {
     const { id } = req.params;
@@ -106,7 +122,7 @@ export const updateProductController = async (req, res) => {
 
     const product = await updateProduct(
       id,
-      req.user.userId,
+      req.user._id,
       req.body
     );
 
@@ -130,7 +146,7 @@ export const deleteProductController = async (req, res) => {
 
     const product = await deleteProduct(
       id,
-      req.user.userId
+      req.user._id
     );
 
     return res.status(200).json({

@@ -14,11 +14,26 @@ import {
 } from "@/components/ui/icons";
 
 const navLinks = [
-  { label: "New In", href: "/" },
+  { label: "New In", href: "/products" },
   { label: "Categories", href: "/categories" },
   { label: "Vendors", href: "/" },
   { label: "Journal", href: "/" },
 ];
+
+// Each role that has a management area gets the same treatment in both the
+// desktop bar and the mobile sheet.
+const dashboards = {
+  admin: {
+    href: "/admin/categories",
+    label: "Admin",
+    mobileLabel: "Manage categories",
+  },
+  vendor: {
+    href: "/vendor/products",
+    label: "Vendor",
+    mobileLabel: "Manage products",
+  },
+};
 
 export default function Navbar() {
   const dispatch = useDispatch();
@@ -74,12 +89,12 @@ export default function Navbar() {
             <div className="ml-2 h-10 w-24 animate-pulse rounded-full bg-sand" />
           ) : isAuthenticated ? (
             <div className="ml-2 flex items-center gap-3">
-              {user.role === "admin" ? (
+              {dashboards[user.role] ? (
                 <Link
-                  href="/admin/categories"
+                  href={dashboards[user.role].href}
                   className="hidden h-10 items-center rounded-full border border-brass/40 px-4 text-xs font-semibold tracking-wider uppercase text-brass transition-colors hover:bg-brass/10 lg:flex"
                 >
-                  Admin
+                  {dashboards[user.role].label}
                 </Link>
               ) : null}
               <Link
@@ -160,13 +175,13 @@ export default function Navbar() {
                 My account
               </Link>
 
-              {user.role === "admin" ? (
+              {dashboards[user.role] ? (
                 <Link
-                  href="/admin/categories"
+                  href={dashboards[user.role].href}
                   onClick={() => setMenuOpen(false)}
                   className="mt-2 flex h-11 items-center justify-center rounded-full border border-brass/40 text-sm font-semibold text-brass"
                 >
-                  Manage categories
+                  {dashboards[user.role].mobileLabel}
                 </Link>
               ) : null}
             </div>

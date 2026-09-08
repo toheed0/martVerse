@@ -1,43 +1,42 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import Image from "next/image";
+import Link from "next/link";
 import { useDispatch, useSelector } from "react-redux";
 import {
-  deleteCategory,
-  fetchAdminCategories,
-  updateCategory,
-} from "@/store/slices/categorySlice";
-import CategoryForm from "./CategoryForm";
-import AdminTabs from "./AdminTabs";
+  deleteProduct,
+  fetchMyProducts,
+  updateProduct,
+} from "@/store/slices/productSlice";
+import ProductForm from "./ProductForm";
+import ProductImage from "@/components/products/ProductImage";
 import Button from "@/components/ui/Button";
 import Alert from "@/components/ui/Alert";
+import { formatPrice } from "@/lib/format";
 
-export default function CategoryManager() {
+export default function ProductManager() {
   const dispatch = useDispatch();
-  const { adminItems, adminStatus, adminError, deletingId, saving, saveError } =
-    useSelector((state) => state.categories);
+  const { mine, mineStatus, mineError, deletingId, saving, saveError } =
+    useSelector((state) => state.products);
 
   const [showForm, setShowForm] = useState(false);
   const [editing, setEditing] = useState(null);
   const [confirmingId, setConfirmingId] = useState(null);
 
   useEffect(() => {
-    dispatch(fetchAdminCategories());
+    dispatch(fetchMyProducts());
   }, [dispatch]);
 
-  const activeCount = adminItems.filter(
-    (item) => item.status === "active"
-  ).length;
-  const inactiveCount = adminItems.length - activeCount;
+  const activeCount = mine.filter((item) => item.status === "active").length;
+  const inactiveCount = mine.length - activeCount;
 
   const startCreate = () => {
     setEditing(null);
     setShowForm(true);
   };
 
-  const startEdit = (category) => {
-    setEditing(category);
+  const startEdit = (product) => {
+    setEditing(product);
     setShowForm(true);
   };
 
@@ -46,36 +45,32 @@ export default function CategoryManager() {
     setEditing(null);
   };
 
-  const reactivate = (category) =>
-    dispatch(
-      updateCategory({ id: category._id, changes: { status: "active" } })
-    );
+  const reactivate = (product) =>
+    dispatch(updateProduct({ id: product._id, changes: { status: "active" } }));
 
   return (
     <div className="mx-auto w-full max-w-7xl px-5 py-12 lg:px-8 lg:py-16">
-      <AdminTabs />
-
-      <div className="mt-8 flex flex-wrap items-end justify-between gap-4">
+      <div className="flex flex-wrap items-end justify-between gap-4">
         <div>
-          <p className="eyebrow text-brass">Admin</p>
+          <p className="eyebrow text-brass">Vendor</p>
           <h1 className="mt-3 font-display text-4xl font-semibold tracking-tight text-ink sm:text-5xl">
-            Categories
+            Your products
           </h1>
           <p className="mt-3 text-muted">
-            {adminStatus === "succeeded"
-              ? `${activeCount} active${
-                  inactiveCount ? ` · ${inactiveCount} inactive` : ""
+            {mineStatus === "succeeded"
+              ? `${activeCount} live${
+                  inactiveCount ? ` · ${inactiveCount} hidden` : ""
                 }`
               : "Loading..."}
           </p>
         </div>
 
-        {!showForm ? <Button onClick={startCreate}>New category</Button> : null}
+        {!showForm ? <Button onClick={startCreate}>New product</Button> : null}
       </div>
 
       {showForm ? (
         <div className="mt-10">
-          <CategoryForm
+          <ProductForm
             key={editing?._id ?? "new"}
             editing={editing}
             onDone={closeForm}
@@ -88,28 +83,29 @@ export default function CategoryManager() {
         {/* A row action has no open form to show its error, so surface it here. */}
         {!showForm ? <Alert type="error">{saveError}</Alert> : null}
 
-        {adminStatus === "loading" ? (
+        {mineStatus === "loading" ? (
           Array.from({ length: 3 }).map((_, i) => (
-            <div key={i} className="h-20 animate-pulse rounded-2xl bg-sand" />
+            <div key={i} className="h-24 animate-pulse rounded-2xl bg-sand" />
           ))
-        ) : adminStatus === "failed" ? (
-          <Alert type="error">{adminError}</Alert>
-        ) : adminItems.length === 0 ? (
+        ) : mineStatus === "failed" ? (
+          <Alert type="error">{mineError}</Alert>
+        ) : mine.length === 0 ? (
           <div className="rounded-2xl border border-dashed border-line px-6 py-14 text-center">
             <p className="font-display text-lg font-semibold text-ink">
-              No categories yet
+              No products yet
             </p>
             <p className="mt-2 text-sm text-muted">
-              Create the first one to get the storefront going.
+              List your first product and it appears on the storefront right
+              away.
             </p>
           </div>
         ) : (
-          adminItems.map((category) => {
-            const isActive = category.status === "active";
+          mine.map((product) => {
+            const isActive = product.status === "active";
 
             return (
               <div
-                key={category._id}
+                key={product._id}
                 className={`flex flex-col gap-4 rounded-2xl border bg-surface p-5 sm:flex-row sm:items-center sm:justify-between ${
                   isActive ? "border-line" : "border-dashed border-line"
                 }`}
@@ -119,30 +115,22 @@ export default function CategoryManager() {
                     isActive ? "" : "opacity-60"
                   }`}
                 >
-                  <div className="relative h-14 w-14 shrink-0 overflow-hidden rounded-xl border border-line bg-sand">
-                    {category.image?.url ? (
-                      <Image
-                        src={category.image.url}
-                        alt=""
-                        fill
-                        sizes="56px"
-                        className="object-cover"
-                      />
-                    ) : (
-                      <span className="flex h-full w-full items-center justify-center font-display text-lg font-semibold text-muted">
-                        {category.name.charAt(0).toUpperCase()}
-                      </span>
-                    )}
+                  <div className="flex h-16 w-16 shrink-0 items-center justify-center overflow-hidden rounded-xl border border-line bg-sand text-pine">
+                    <ProductImage product={product} artClassName="h-10 w-10" />
                   </div>
 
                   <div className="min-w-0">
                     <div className="flex flex-wrap items-center gap-3">
                       <h3 className="font-display text-lg font-semibold text-ink">
-                        {category.name}
+                        {product.name}
                       </h3>
-                      <span className="rounded-full border border-line bg-sand px-2.5 py-0.5 font-mono text-[0.7rem] text-muted">
-                        /{category.slug}
-                      </span>
+
+                      {product.categoryId?.name ? (
+                        <span className="rounded-full border border-line bg-sand px-2.5 py-0.5 text-[0.62rem] tracking-[0.1em] uppercase text-muted">
+                          {product.categoryId.name}
+                        </span>
+                      ) : null}
+
                       <span
                         className={`flex items-center gap-1.5 rounded-full border px-2.5 py-0.5 text-[0.62rem] font-semibold tracking-[0.12em] uppercase ${
                           isActive
@@ -155,28 +143,35 @@ export default function CategoryManager() {
                             isActive ? "bg-pine" : "bg-muted"
                           }`}
                         />
-                        {category.status}
+                        {isActive ? "live" : "hidden"}
                       </span>
                     </div>
-                    <p className="mt-1 truncate text-sm text-muted">
-                      {category.description || "No description"}
+
+                    <p className="mt-1 text-sm text-muted">
+                      <span className="font-semibold text-ink">
+                        {formatPrice(product.price)}
+                      </span>
+                      {" · "}
+                      {product.stock > 0
+                        ? `${product.stock} in stock`
+                        : "Out of stock"}
                     </p>
                   </div>
                 </div>
 
-                {confirmingId === category._id ? (
+                {confirmingId === product._id ? (
                   <div className="flex shrink-0 items-center gap-2">
-                    <span className="text-sm text-muted">Deactivate?</span>
+                    <span className="text-sm text-muted">Hide this?</span>
                     <button
                       type="button"
-                      disabled={deletingId === category._id}
+                      disabled={deletingId === product._id}
                       onClick={() => {
-                        dispatch(deleteCategory(category._id));
+                        dispatch(deleteProduct(product._id));
                         setConfirmingId(null);
                       }}
                       className="h-10 rounded-full bg-clay px-5 text-sm font-semibold text-white transition-colors hover:bg-clay/90 disabled:opacity-60"
                     >
-                      {deletingId === category._id ? "Working..." : "Yes"}
+                      {deletingId === product._id ? "Working..." : "Yes"}
                     </button>
                     <button
                       type="button"
@@ -187,10 +182,19 @@ export default function CategoryManager() {
                     </button>
                   </div>
                 ) : (
-                  <div className="flex shrink-0 items-center gap-2">
+                  <div className="flex shrink-0 flex-wrap items-center gap-2">
+                    {isActive ? (
+                      <Link
+                        href={`/products/${product._id}`}
+                        className="flex h-10 items-center rounded-full px-4 text-sm font-semibold text-muted transition-colors hover:bg-ink/5 hover:text-ink"
+                      >
+                        View
+                      </Link>
+                    ) : null}
+
                     <button
                       type="button"
-                      onClick={() => startEdit(category)}
+                      onClick={() => startEdit(product)}
                       className="h-10 rounded-full border border-ink/20 px-5 text-sm font-semibold text-ink transition-colors hover:border-ink hover:bg-ink/5"
                     >
                       Edit
@@ -199,19 +203,19 @@ export default function CategoryManager() {
                     {isActive ? (
                       <button
                         type="button"
-                        onClick={() => setConfirmingId(category._id)}
+                        onClick={() => setConfirmingId(product._id)}
                         className="h-10 rounded-full px-5 text-sm font-semibold text-clay transition-colors hover:bg-clay/10"
                       >
-                        Deactivate
+                        Hide
                       </button>
                     ) : (
                       <button
                         type="button"
                         disabled={saving}
-                        onClick={() => reactivate(category)}
+                        onClick={() => reactivate(product)}
                         className="h-10 rounded-full bg-pine px-5 text-sm font-semibold text-canvas transition-colors hover:bg-pine-soft disabled:opacity-60"
                       >
-                        Reactivate
+                        Republish
                       </button>
                     )}
                   </div>
@@ -223,8 +227,8 @@ export default function CategoryManager() {
       </div>
 
       <p className="mt-8 rounded-xl border border-line bg-sand/60 px-5 py-4 text-xs leading-relaxed text-muted">
-        Deactivating hides a category from the storefront but keeps the record.
-        It stays listed here so you can bring it back with Reactivate.
+        Hiding a product removes it from the storefront but keeps the record and
+        its stock. It stays listed here so you can bring it back with Republish.
       </p>
     </div>
   );

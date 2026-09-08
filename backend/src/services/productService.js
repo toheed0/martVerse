@@ -108,6 +108,16 @@ export const getAllProducts = async ({
   };
 };
 
+// A vendor's own shelf. Unlike getAllProducts this keeps inactive rows, so the
+// dashboard can list — and reactivate — products the vendor took down.
+export const getVendorProducts = async (vendorId) => {
+  const products = await Product.find({ vendorId })
+    .populate("categoryId", "name slug")
+    .sort({ createdAt: -1 });
+
+  return products;
+};
+
 export const getProductById = async (productId) => {
   const product = await Product.findOne({
     _id: productId,

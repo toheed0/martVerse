@@ -3,6 +3,7 @@ import {
   createProductController,
   deleteProductController,
   getAllProductsController,
+  getMyProductsController,
   getProductByIdController,
   updateProductController,
 } from "../controllers/productController.js";
@@ -22,6 +23,15 @@ router.post(
 router.get(
   "/",
   getAllProductsController
+);
+
+// Must stay ABOVE "/:id" — otherwise Express matches that route first with
+// id = "mine" and Mongoose throws a CastError.
+router.get(
+  "/mine",
+  protect,
+  requireRole("vendor"),
+  getMyProductsController
 );
 
 router.get(
