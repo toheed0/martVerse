@@ -1,4 +1,4 @@
-import { createProduct, deleteProduct, getAllProducts, getProductById, getVendorProducts, updateProduct } from "../services/productService.js";
+import { createProduct, deleteProduct, getAllProducts, getProductById, getProductsForAdmin, getVendorProducts, updateProduct } from "../services/productService.js";
 
 export const createProductController = async (req, res) => {
   try {
@@ -98,6 +98,41 @@ export const getMyProductsController = async (req, res) => {
   }
 };
 
+export const getAdminProductsController = async (req, res) => {
+  try {
+    const page = Math.max(Number(req.query.page) || 1, 1);
+
+    const limit = Math.min(
+      Math.max(Number(req.query.limit) || 20, 1),
+      100
+    );
+
+    const {
+      search,
+      vendorId,
+      status,
+    } = req.query;
+
+    const result = await getProductsForAdmin({
+      page,
+      limit,
+      search,
+      vendorId,
+      status,
+    });
+
+    return res.status(200).json({
+      success: true,
+      ...result,
+    });
+  } catch (error) {
+    return res.status(500).json({
+      success: false,
+      message: error.message,
+    });
+  }
+};
+
 export const getProductByIdController = async (req, res) => {
   try {
     const { id } = req.params;
@@ -122,7 +157,7 @@ export const updateProductController = async (req, res) => {
 
     const product = await updateProduct(
       id,
-      req.user._id,
+      req.user,
       req.body
     );
 
@@ -146,7 +181,7 @@ export const deleteProductController = async (req, res) => {
 
     const product = await deleteProduct(
       id,
-      req.user._id
+      req.user
     );
 
     return res.status(200).json({

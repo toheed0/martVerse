@@ -5,102 +5,182 @@ import Link from "next/link";
 import { useDispatch, useSelector } from "react-redux";
 import {
   deleteProduct,
-  fetchMyProducts,
+  fetchAdminProducts,
   updateProduct,
 } from "@/store/slices/productSlice";
+import { fetchUsers } from "@/store/slices/userSlice";
+import AdminTabs from "./AdminTabs";
 import ProductForm from "@/components/products/ProductForm";
 import ProductImage from "@/components/products/ProductImage";
-import Button from "@/components/ui/Button";
 import Alert from "@/components/ui/Alert";
 import { formatPrice } from "@/lib/format";
 
+const PAGE_SIZE = 20;
+
+const statusFilters = ["all", "active", "inactive"];
+
+const fieldClass =
+  "h-11 rounded-xl border border-line bg-surface px-4 text-sm text-ink outline-none transition-colors placeholder:text-muted/50 focus:border-pine";
+
 export default function ProductManager() {
   const dispatch = useDispatch();
-  const { mine, mineStatus, mineError, deletingId, saving, saveError } =
-    useSelector((state) => state.products);
+  const {
+    admin,
+    adminPagination,
+    adminStatus,
+    adminError,
+    deletingId,
+    saving,
+    saveError,
+  } = useSelector((state) => state.products);
+  const { items: users, status: usersStatus } = useSelector(
+    (state) => state.users
+  );
 
-  const [showForm, setShowForm] = useState(false);
+  const [search, setSearch] = useState("");
+  // The request only fires once typing pauses, so a long name is one call.
+  const [committedSearch, setCommittedSearch] = useState("");
+  const [vendorId, setVendorId] = useState("");
+  const [status, setStatus] = useState("all");
+  const [page, setPage] = useState(1);
+
   const [editing, setEditing] = useState(null);
   const [confirmingId, setConfirmingId] = useState(null);
 
+  // Populates the vendor dropdown. The Vendors tab may have loaded these
+  // already, so only fetch when nothing is in the store yet.
   useEffect(() => {
-    dispatch(fetchMyProducts());
-  }, [dispatch]);
+    if (usersStatus === "idle") dispatch(fetchUsers({ role: "vendor" }));
+  }, [usersStatus, dispatch]);
 
-  const activeCount = mine.filter((item) => item.status === "active").length;
-  const inactiveCount = mine.length - activeCount;
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setCommittedSearch(search.trim());
+      setPage(1);
+    }, 350);
 
-  const startCreate = () => {
-    setEditing(null);
-    setShowForm(true);
-  };
+    return () => clearTimeout(timer);
+  }, [search]);
 
-  const startEdit = (product) => {
-    setEditing(product);
-    setShowForm(true);
-  };
+  useEffect(() => {
+    dispatch(
+      fetchAdminProducts({
+        page,
+        limit: PAGE_SIZE,
+        search: committedSearch || undefined,
+        vendorId: vendorId || undefined,
+        status: status === "all" ? undefined : status,
+      })
+    );
+  }, [dispatch, page, committedSearch, vendorId, status]);
 
-  const closeForm = () => {
-    setShowForm(false);
-    setEditing(null);
-  };
+  const vendors = users.filter((user) => user.role === "vendor");
+  const { totalProducts = 0, totalPages = 0 } = adminPagination || {};
+  const isFiltered = Boolean(committedSearch || vendorId || status !== "all");
 
   const reactivate = (product) =>
     dispatch(updateProduct({ id: product._id, changes: { status: "active" } }));
 
   return (
     <div className="mx-auto w-full max-w-7xl px-5 py-12 lg:px-8 lg:py-16">
-      <div className="flex flex-wrap items-end justify-between gap-4">
-        <div>
-          <p className="eyebrow text-brass">Vendor</p>
-          <h1 className="mt-3 font-display text-4xl font-semibold tracking-tight text-ink sm:text-5xl">
-            Your products
-          </h1>
-          <p className="mt-3 text-muted">
-            {mineStatus === "succeeded"
-              ? `${activeCount} live${
-                  inactiveCount ? ` · ${inactiveCount} hidden` : ""
-                }`
-              : "Loading..."}
-          </p>
-        </div>
+      <AdminTabs />
 
-        {!showForm ? <Button onClick={startCreate}>New product</Button> : null}
+      <div className="mt-8">
+        <p className="eyebrow text-brass">Admin</p>
+        <h1 className="mt-3 font-display text-4xl font-semibold tracking-tight text-ink sm:text-5xl">
+          Products
+        </h1>
+        <p className="mt-3 text-muted">
+          {adminStatus === "succeeded"
+            ? `${totalProducts} ${
+                totalProducts === 1 ? "product" : "products"
+              } across every vendor`
+            : "Loading..."}
+        </p>
       </div>
 
-      {showForm ? (
+      <div className="mt-8 flex flex-wrap items-center gap-3">
+        <input
+          type="search"
+          value={search}
+          placeholder="Search by product name"
+          aria-label="Search products"
+          onChange={(e) => setSearch(e.target.value)}
+          className={`${fieldClass} w-full sm:w-64`}
+        />
+
+        <select
+          value={vendorId}
+          aria-label="Filter by vendor"
+          onChange={(e) => {
+            setVendorId(e.target.value);
+            setPage(1);
+          }}
+          className={`${fieldClass} w-full sm:w-56`}
+        >
+          <option value="">All vendors</option>
+          {vendors.map((vendor) => (
+            <option key={vendor._id} value={vendor._id}>
+              {vendor.name}
+            </option>
+          ))}
+        </select>
+
+        <div className="flex flex-wrap gap-2">
+          {statusFilters.map((value) => (
+            <button
+              key={value}
+              type="button"
+              onClick={() => {
+                setStatus(value);
+                setPage(1);
+              }}
+              className={`flex h-11 items-center rounded-full px-5 text-sm font-semibold capitalize transition-colors ${
+                status === value
+                  ? "bg-pine text-canvas"
+                  : "border border-line text-muted hover:border-ink/30 hover:text-ink"
+              }`}
+            >
+              {value}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {editing ? (
         <div className="mt-10">
           <ProductForm
-            key={editing?._id ?? "new"}
+            key={editing._id}
             editing={editing}
-            onDone={closeForm}
-            onCancel={closeForm}
+            onDone={() => setEditing(null)}
+            onCancel={() => setEditing(null)}
           />
         </div>
       ) : null}
 
       <div className="mt-10 space-y-3">
         {/* A row action has no open form to show its error, so surface it here. */}
-        {!showForm ? <Alert type="error">{saveError}</Alert> : null}
+        {!editing ? <Alert type="error">{saveError}</Alert> : null}
 
-        {mineStatus === "loading" ? (
-          Array.from({ length: 3 }).map((_, i) => (
+        {adminStatus === "loading" || adminStatus === "idle" ? (
+          Array.from({ length: 4 }).map((_, i) => (
             <div key={i} className="h-24 animate-pulse rounded-2xl bg-sand" />
           ))
-        ) : mineStatus === "failed" ? (
-          <Alert type="error">{mineError}</Alert>
-        ) : mine.length === 0 ? (
+        ) : adminStatus === "failed" ? (
+          <Alert type="error">{adminError}</Alert>
+        ) : admin.length === 0 ? (
           <div className="rounded-2xl border border-dashed border-line px-6 py-14 text-center">
             <p className="font-display text-lg font-semibold text-ink">
-              No products yet
+              {isFiltered ? "Nothing matches those filters" : "No products yet"}
             </p>
             <p className="mt-2 text-sm text-muted">
-              List your first product and it appears on the storefront right
-              away.
+              {isFiltered
+                ? "Try a different vendor, or clear the search."
+                : "Products appear here as soon as an approved vendor lists one."}
             </p>
           </div>
         ) : (
-          mine.map((product) => {
+          admin.map((product) => {
             const isActive = product.status === "active";
 
             return (
@@ -147,10 +227,14 @@ export default function ProductManager() {
                       </span>
                     </div>
 
-                    <p className="mt-1 text-sm text-muted">
+                    {/* The column that makes this list different from a
+                        vendor's own — whose shelf the row belongs to. */}
+                    <p className="mt-1 truncate text-sm text-muted">
                       <span className="font-semibold text-ink">
-                        {formatPrice(product.price)}
+                        {product.vendorId?.name || "Unknown vendor"}
                       </span>
+                      {" · "}
+                      {formatPrice(product.price)}
                       {" · "}
                       {product.stock > 0
                         ? `${product.stock} in stock`
@@ -194,7 +278,7 @@ export default function ProductManager() {
 
                     <button
                       type="button"
-                      onClick={() => startEdit(product)}
+                      onClick={() => setEditing(product)}
                       className="h-10 rounded-full border border-ink/20 px-5 text-sm font-semibold text-ink transition-colors hover:border-ink hover:bg-ink/5"
                     >
                       Edit
@@ -226,9 +310,39 @@ export default function ProductManager() {
         )}
       </div>
 
+      {totalPages > 1 ? (
+        <nav
+          aria-label="Pagination"
+          className="mt-8 flex items-center justify-center gap-3"
+        >
+          <button
+            type="button"
+            disabled={page <= 1}
+            onClick={() => setPage((current) => current - 1)}
+            className="h-10 rounded-full border border-ink/20 px-5 text-sm font-semibold text-ink transition-colors hover:border-ink hover:bg-ink/5 disabled:opacity-40"
+          >
+            Previous
+          </button>
+
+          <span className="text-sm text-muted">
+            Page {page} of {totalPages}
+          </span>
+
+          <button
+            type="button"
+            disabled={page >= totalPages}
+            onClick={() => setPage((current) => current + 1)}
+            className="h-10 rounded-full border border-ink/20 px-5 text-sm font-semibold text-ink transition-colors hover:border-ink hover:bg-ink/5 disabled:opacity-40"
+          >
+            Next
+          </button>
+        </nav>
+      ) : null}
+
       <p className="mt-8 rounded-xl border border-line bg-sand/60 px-5 py-4 text-xs leading-relaxed text-muted">
-        Hiding a product removes it from the storefront but keeps the record and
-        its stock. It stays listed here so you can bring it back with Republish.
+        Editing here overrides the vendor&apos;s own listing. Hiding takes a
+        product off the storefront without deleting it — the vendor still sees
+        it on their dashboard, and either of you can republish it.
       </p>
     </div>
   );

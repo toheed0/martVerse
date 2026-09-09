@@ -11,7 +11,7 @@ export default function HeroActions() {
 
   return (
     <div className="mt-10 flex flex-wrap items-center gap-3">
-      <Button href={isAuthenticated ? "/" : "/register"} size="lg">
+      <Button href={isAuthenticated ? "/products" : "/register"} size="lg">
         Start shopping
         <ArrowIcon className="h-4 w-4" />
       </Button>

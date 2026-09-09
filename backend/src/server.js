@@ -9,6 +9,7 @@ import authRouter from "./routers/authRouter.js";
 import categoryRoutes from "./routers/categoryRoutes.js";
 import productRoutes from "./routers/productRoutes.js";
 import userRoutes from "./routers/userRoutes.js";
+import cartRoutes from "./routers/cartRoutes.js";
 
 const requiredEnv = ["MONGO_URI", "JWT_ACCESS_SECRET", "JWT_REFRESH_SECRET"];
 const missingEnv = requiredEnv.filter((key) => !process.env[key]);
@@ -42,6 +43,8 @@ app.use("/api/categories", categoryRoutes);
 app.use("/api/products", productRoutes);
 
 app.use("/api/users", userRoutes);
+
+app.use("/api/cart", cartRoutes);
 
 app.use((req, res) => {
   res.status(404).json({

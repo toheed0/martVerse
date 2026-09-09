@@ -2,6 +2,7 @@ import express from "express";
 import {
   createProductController,
   deleteProductController,
+  getAdminProductsController,
   getAllProductsController,
   getMyProductsController,
   getProductByIdController,
@@ -34,22 +35,32 @@ router.get(
   getMyProductsController
 );
 
+// Same ordering rule as "/mine". Every vendor's shelf, inactive rows included.
+router.get(
+  "/admin",
+  protect,
+  requireRole("admin"),
+  getAdminProductsController
+);
+
 router.get(
   "/:id",
   getProductByIdController
 );
 
+// Vendors edit their own products; admins moderate anyone's. The service
+// narrows the query by role, so a vendor still can't reach another shelf.
 router.patch(
   "/:id",
   protect,
-  requireRole("vendor"),
+  requireRole("vendor", "admin"),
   updateProductController
 );
 
 router.delete(
   "/:id",
   protect,
-  requireRole("vendor"),
+  requireRole("vendor", "admin"),
   deleteProductController
 );
 

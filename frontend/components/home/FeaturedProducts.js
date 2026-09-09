@@ -1,45 +1,31 @@
+"use client";
+
+import { useEffect } from "react";
 import Link from "next/link";
+import { useDispatch, useSelector } from "react-redux";
+import { fetchFeaturedProducts } from "@/store/slices/productSlice";
+import ProductCard from "@/components/products/ProductCard";
 import ProductArt from "./ProductArt";
-import { ArrowIcon, StarIcon } from "@/components/ui/icons";
+import { ArrowIcon } from "@/components/ui/icons";
 
-const products = [
-  {
-    art: "vase",
-    name: "Kaolin Stem Vase",
-    vendor: "Studio Terra",
-    price: "Rs 4,850",
-    rating: "4.9",
-    tint: "bg-tint-1",
-    badge: "New",
-  },
-  {
-    art: "chair",
-    name: "Halden Lounge Chair",
-    vendor: "Norda Works",
-    price: "Rs 32,000",
-    rating: "4.8",
-    tint: "bg-tint-2",
-  },
-  {
-    art: "bag",
-    name: "Everyday Canvas Tote",
-    vendor: "Field & Thread",
-    price: "Rs 3,200",
-    rating: "4.7",
-    tint: "bg-tint-3",
-    badge: "Bestseller",
-  },
-  {
-    art: "watch",
-    name: "Meridian Field Watch",
-    vendor: "Atlas Horology",
-    price: "Rs 18,400",
-    rating: "5.0",
-    tint: "bg-tint-4",
-  },
-];
+const FEATURED_LIMIT = 4;
 
+// The API returns newest first, so this is the four most recent listings rather
+// than a hand-picked set — there is no "featured" flag on a product yet.
 export default function FeaturedProducts() {
+  const dispatch = useDispatch();
+  const { featured, featuredStatus, featuredError } = useSelector(
+    (state) => state.products
+  );
+
+  useEffect(() => {
+    // Only fetch once. A create or edit anywhere resets this back to idle, so
+    // the strip picks the change up the next time the home page mounts.
+    if (featuredStatus === "idle") {
+      dispatch(fetchFeaturedProducts({ limit: FEATURED_LIMIT }));
+    }
+  }, [featuredStatus, dispatch]);
+
   return (
     <section className="border-b border-line bg-surface">
       <div className="mx-auto max-w-7xl px-5 py-20 lg:px-8 lg:py-28">
@@ -51,7 +37,7 @@ export default function FeaturedProducts() {
             </h2>
           </div>
           <Link
-            href="/"
+            href="/products"
             className="group flex items-center gap-2 text-sm font-semibold text-ink"
           >
             View all products
@@ -59,48 +45,57 @@ export default function FeaturedProducts() {
           </Link>
         </div>
 
-        <div className="mt-12 grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
-          {products.map((product) => (
-            <article key={product.name} className="group">
-              <div
-                className={`relative flex h-64 items-center justify-center rounded-2xl text-pine transition-transform duration-300 group-hover:-translate-y-1 ${product.tint}`}
-              >
-                {product.badge ? (
-                  <span className="absolute top-4 left-4 rounded-full bg-surface px-3 py-1 text-[0.65rem] font-semibold tracking-[0.12em] uppercase text-ink">
-                    {product.badge}
-                  </span>
-                ) : null}
-
-                <ProductArt name={product.art} className="h-36 w-36" />
-
-                <button
-                  type="button"
-                  className="absolute right-4 bottom-4 h-10 rounded-full bg-ink px-5 text-xs font-semibold text-canvas opacity-0 transition-opacity group-hover:opacity-100"
-                >
-                  Add to bag
-                </button>
-              </div>
-
-              <div className="mt-4 flex items-start justify-between gap-3">
-                <div>
-                  <p className="text-[0.7rem] tracking-[0.12em] uppercase text-muted">
-                    {product.vendor}
-                  </p>
-                  <h3 className="mt-1 font-display text-lg font-semibold text-ink">
-                    {product.name}
-                  </h3>
+        <div className="mt-12">
+          {featuredStatus === "loading" || featuredStatus === "idle" ? (
+            <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
+              {Array.from({ length: FEATURED_LIMIT }).map((_, i) => (
+                <div key={i}>
+                  <div className="h-64 animate-pulse rounded-2xl bg-sand" />
+                  <div className="mt-4 h-3 w-24 animate-pulse rounded bg-sand" />
+                  <div className="mt-2 h-4 w-40 animate-pulse rounded bg-sand" />
                 </div>
-                <span className="flex shrink-0 items-center gap-1 text-xs text-muted">
-                  <StarIcon className="h-3.5 w-3.5 text-brass" />
-                  {product.rating}
-                </span>
-              </div>
-
-              <p className="mt-2 text-sm font-semibold text-ink">
-                {product.price}
+              ))}
+            </div>
+          ) : featuredStatus === "failed" ? (
+            <div className="rounded-2xl border border-clay/30 bg-clay/5 px-6 py-10 text-center">
+              <p className="font-display text-lg font-semibold text-ink">
+                Couldn&apos;t load products
               </p>
-            </article>
-          ))}
+              <p className="mt-2 text-sm text-muted">{featuredError}</p>
+              <button
+                type="button"
+                onClick={() =>
+                  dispatch(fetchFeaturedProducts({ limit: FEATURED_LIMIT }))
+                }
+                className="mt-6 h-11 rounded-full bg-pine px-6 text-sm font-semibold text-canvas transition-colors hover:bg-pine-soft"
+              >
+                Try again
+              </button>
+            </div>
+          ) : featured.length === 0 ? (
+            <div className="flex flex-col items-center rounded-2xl border border-dashed border-line px-6 py-16 text-center">
+              <div className="opacity-40">
+                <ProductArt name="vase" className="h-20 w-20 text-pine" />
+              </div>
+              <p className="mt-6 font-display text-lg font-semibold text-ink">
+                Nothing listed yet
+              </p>
+              <p className="mt-2 max-w-sm text-sm leading-relaxed text-muted">
+                The first products land here as soon as our vendors start
+                filling their shelves.
+              </p>
+            </div>
+          ) : (
+            <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
+              {featured.map((product, index) => (
+                <ProductCard
+                  key={product._id}
+                  product={product}
+                  index={index}
+                />
+              ))}
+            </div>
+          )}
         </div>
       </div>
     </section>

@@ -31,6 +31,21 @@ export const fetchCategoryProducts = createAsyncThunk(
   }
 );
 
+// The home page strip. Kept apart from the browse list for the same reason as
+// the category preview — four newest products must not overwrite whatever
+// filters the products page had loaded.
+export const fetchFeaturedProducts = createAsyncThunk(
+  "products/fetchFeatured",
+  async ({ limit = 4 } = {}, { rejectWithValue }) => {
+    try {
+      const { data } = await api.get("/products", { params: { limit } });
+      return data.products;
+    } catch (error) {
+      return rejectWithValue(getErrorMessage(error));
+    }
+  }
+);
+
 export const fetchProductById = createAsyncThunk(
   "products/fetchOne",
   async (id, { rejectWithValue }) => {
@@ -56,6 +71,20 @@ export const fetchMyProducts = createAsyncThunk(
   },
   {
     condition: (_, { getState }) => getState().products.mineStatus !== "loading",
+  }
+);
+
+// Admin-only: every vendor's shelf, inactive rows included, paginated and
+// filtered server-side because this list spans the whole catalogue.
+export const fetchAdminProducts = createAsyncThunk(
+  "products/fetchForAdmin",
+  async (params, { rejectWithValue }) => {
+    try {
+      const { data } = await api.get("/products/admin", { params });
+      return data;
+    } catch (error) {
+      return rejectWithValue(getErrorMessage(error));
+    }
   }
 );
 
@@ -113,10 +142,23 @@ const initialState = {
   categoryStatus: "idle",
   categoryError: null,
 
+  // Home page strip — the newest handful of products.
+  featured: [],
+  featuredStatus: "idle",
+  featuredError: null,
+
   // Vendor's own shelf, inactive rows included.
   mine: [],
   mineStatus: "idle",
   mineError: null,
+
+  // Admin moderation list across every vendor.
+  admin: [],
+  adminPagination: { page: 1, limit: 20, totalProducts: 0, totalPages: 0 },
+  adminStatus: "idle",
+  adminError: null,
+  // Same out-of-order guard as the public list — admin filters change fast too.
+  adminRequestId: null,
 
   saving: false,
   saveError: null,
@@ -128,18 +170,27 @@ const initialState = {
   currentError: null,
 };
 
-// The update and delete responses come back without the populated category, so
-// keep the row's existing one rather than blanking the column.
-const replaceInMine = (state, product) => {
-  const index = state.mine.findIndex((item) => item._id === product._id);
+// The update and delete responses come back without the populated category or
+// vendor, so keep the row's existing ones rather than blanking those columns.
+const patchRow = (list, product) => {
+  const index = list.findIndex((item) => item._id === product._id);
   if (index === -1) return;
 
-  state.mine[index] = {
+  list[index] = {
     ...product,
     categoryId: product.categoryId?.name
       ? product.categoryId
-      : state.mine[index].categoryId,
+      : list[index].categoryId,
+    vendorId: product.vendorId?.name
+      ? product.vendorId
+      : list[index].vendorId,
   };
+};
+
+// A save can land while either manager is open, so keep both lists in step.
+const replaceProduct = (state, product) => {
+  patchRow(state.mine, product);
+  patchRow(state.admin, product);
 };
 
 const productSlice = createSlice({
@@ -185,6 +236,20 @@ const productSlice = createSlice({
         state.categoryError = action.payload;
       })
 
+      // Home page strip
+      .addCase(fetchFeaturedProducts.pending, (state) => {
+        state.featuredStatus = "loading";
+        state.featuredError = null;
+      })
+      .addCase(fetchFeaturedProducts.fulfilled, (state, action) => {
+        state.featuredStatus = "succeeded";
+        state.featured = action.payload;
+      })
+      .addCase(fetchFeaturedProducts.rejected, (state, action) => {
+        state.featuredStatus = "failed";
+        state.featuredError = action.payload;
+      })
+
       // Vendor list
       .addCase(fetchMyProducts.pending, (state) => {
         state.mineStatus = "loading";
@@ -197,6 +262,24 @@ const productSlice = createSlice({
       .addCase(fetchMyProducts.rejected, (state, action) => {
         state.mineStatus = "failed";
         state.mineError = action.payload;
+      })
+
+      // Admin list
+      .addCase(fetchAdminProducts.pending, (state, action) => {
+        state.adminStatus = "loading";
+        state.adminError = null;
+        state.adminRequestId = action.meta.requestId;
+      })
+      .addCase(fetchAdminProducts.fulfilled, (state, action) => {
+        if (state.adminRequestId !== action.meta.requestId) return;
+        state.adminStatus = "succeeded";
+        state.admin = action.payload.products;
+        state.adminPagination = action.payload.pagination;
+      })
+      .addCase(fetchAdminProducts.rejected, (state, action) => {
+        if (state.adminRequestId !== action.meta.requestId) return;
+        state.adminStatus = "failed";
+        state.adminError = action.payload;
       })
 
       // Single product
@@ -222,8 +305,9 @@ const productSlice = createSlice({
       .addCase(createProduct.fulfilled, (state, action) => {
         state.saving = false;
         state.mine.unshift(action.payload);
-        // Force the public grid to refetch next time it mounts.
+        // Force the public grid and the home strip to refetch next mount.
         state.listStatus = "idle";
+        state.featuredStatus = "idle";
       })
       .addCase(createProduct.rejected, (state, action) => {
         state.saving = false;
@@ -237,8 +321,9 @@ const productSlice = createSlice({
       })
       .addCase(updateProduct.fulfilled, (state, action) => {
         state.saving = false;
-        replaceInMine(state, action.payload);
+        replaceProduct(state, action.payload);
         state.listStatus = "idle";
+        state.featuredStatus = "idle";
       })
       .addCase(updateProduct.rejected, (state, action) => {
         state.saving = false;
@@ -251,9 +336,10 @@ const productSlice = createSlice({
       })
       .addCase(deleteProduct.fulfilled, (state, action) => {
         state.deletingId = null;
-        // Stays in the vendor list, now inactive, so it can be restored.
-        replaceInMine(state, action.payload);
+        // Stays in both lists, now inactive, so it can be restored.
+        replaceProduct(state, action.payload);
         state.listStatus = "idle";
+        state.featuredStatus = "idle";
       })
       .addCase(deleteProduct.rejected, (state, action) => {
         state.deletingId = null;

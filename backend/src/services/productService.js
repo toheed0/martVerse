@@ -2,6 +2,13 @@ import Product from "../models/Product.js";
 import Category from "../models/Category.js";
 import User from "../models/UserModel.js";
 
+// Who is allowed to touch a given product. An admin moderates every shelf, so
+// their filter is the id alone; a vendor is always pinned to their own rows.
+const ownedBy = (productId, actor) =>
+  actor.role === "admin"
+    ? { _id: productId }
+    : { _id: productId, vendorId: actor._id };
+
 export const createProduct = async ({
   vendorId,
   categoryId,
@@ -118,6 +125,56 @@ export const getVendorProducts = async (vendorId) => {
   return products;
 };
 
+// The admin moderation list. Like getVendorProducts it keeps inactive rows,
+// but it spans every vendor and is paginated, since it grows with the catalogue.
+export const getProductsForAdmin = async ({
+  page = 1,
+  limit = 20,
+  search,
+  vendorId,
+  status,
+}) => {
+  const skip = (page - 1) * limit;
+
+  const filter = {};
+
+  if (search) {
+    filter.name = {
+      $regex: search,
+      $options: "i",
+    };
+  }
+
+  if (vendorId) {
+    filter.vendorId = vendorId;
+  }
+
+  if (status) {
+    filter.status = status;
+  }
+
+  const [products, totalProducts] = await Promise.all([
+    Product.find(filter)
+      .populate("categoryId", "name slug")
+      .populate("vendorId", "name email")
+      .sort({ createdAt: -1 })
+      .skip(skip)
+      .limit(limit),
+
+    Product.countDocuments(filter),
+  ]);
+
+  return {
+    products,
+    pagination: {
+      page,
+      limit,
+      totalProducts,
+      totalPages: Math.ceil(totalProducts / limit),
+    },
+  };
+};
+
 export const getProductById = async (productId) => {
   const product = await Product.findOne({
     _id: productId,
@@ -135,7 +192,7 @@ export const getProductById = async (productId) => {
 
 export const updateProduct = async (
   productId,
-  vendorId,
+  actor,
   {
     categoryId,
     name,
@@ -146,10 +203,7 @@ export const updateProduct = async (
     status,
   }
 ) => {
-  const product = await Product.findOne({
-    _id: productId,
-    vendorId,
-  });
+  const product = await Product.findOne(ownedBy(productId, actor));
 
   if (!product) {
     throw new Error(
@@ -184,11 +238,8 @@ export const updateProduct = async (
 };
 
 
-export const deleteProduct = async (productId, vendorId) => {
-  const product = await Product.findOne({
-    _id: productId,
-    vendorId,
-  });
+export const deleteProduct = async (productId, actor) => {
+  const product = await Product.findOne(ownedBy(productId, actor));
 
   if (!product) {
     throw new Error(

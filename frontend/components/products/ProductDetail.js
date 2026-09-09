@@ -7,6 +7,7 @@ import { useDispatch, useSelector } from "react-redux";
 import { fetchProductById } from "@/store/slices/productSlice";
 import ProductArt from "@/components/home/ProductArt";
 import { artFor } from "./ProductImage";
+import AddToCartButton from "@/components/cart/AddToCartButton";
 import { formatPrice, stockLabel } from "@/lib/format";
 import { ArrowIcon } from "@/components/ui/icons";
 
@@ -182,17 +183,7 @@ export default function ProductDetail() {
             </p>
           </div>
 
-          <button
-            type="button"
-            disabled={stock.tone === "out"}
-            className="mt-8 flex h-14 w-full items-center justify-center rounded-full bg-pine text-sm font-semibold text-canvas transition-colors hover:bg-pine-soft disabled:cursor-not-allowed disabled:opacity-50 sm:w-auto sm:px-10"
-          >
-            {stock.tone === "out" ? "Sold out" : "Add to bag"}
-          </button>
-
-          <p className="mt-3 text-xs text-muted">
-            Carts aren&apos;t wired up yet — this button is a placeholder.
-          </p>
+          <AddToCartButton product={current} />
 
           <Link
             href="/products"

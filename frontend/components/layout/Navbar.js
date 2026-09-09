@@ -4,6 +4,7 @@ import { useState } from "react";
 import Link from "next/link";
 import { useDispatch, useSelector } from "react-redux";
 import { logout } from "@/store/slices/authSlice";
+import { selectCartCount } from "@/store/slices/cartSlice";
 import Logo from "@/components/ui/Logo";
 import {
   BagIcon,
@@ -40,6 +41,7 @@ export default function Navbar() {
   const { user, isAuthenticated, bootstrapped } = useSelector(
     (state) => state.auth
   );
+  const cartCount = useSelector(selectCartCount);
   const [menuOpen, setMenuOpen] = useState(false);
 
   return (
@@ -74,14 +76,20 @@ export default function Navbar() {
             <SearchIcon />
           </button>
 
-          <button
-            type="button"
-            aria-label="Cart"
+          <Link
+            href="/cart"
+            aria-label={
+              cartCount ? `Cart, ${cartCount} items` : "Cart"
+            }
             className="relative flex h-10 w-10 items-center justify-center rounded-full text-ink transition-colors hover:bg-ink/5"
           >
             <BagIcon />
-            <span className="absolute top-1.5 right-1.5 h-1.5 w-1.5 rounded-full bg-brass" />
-          </button>
+            {cartCount > 0 ? (
+              <span className="absolute -top-0.5 -right-0.5 flex h-5 min-w-5 items-center justify-center rounded-full bg-brass px-1 text-[0.65rem] font-semibold text-white">
+                {cartCount > 99 ? "99+" : cartCount}
+              </span>
+            ) : null}
+          </Link>
 
           {/* Nothing is rendered until the session check finishes, so the
               navbar never flashes the wrong state. */}

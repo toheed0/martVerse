@@ -6,6 +6,7 @@ import { usePathname } from "next/navigation";
 const tabs = [
   { href: "/admin/categories", label: "Categories" },
   { href: "/admin/vendors", label: "Vendors" },
+  { href: "/admin/products", label: "Products" },
 ];
 
 // The navbar only has room for one admin link, so the admin area carries its
