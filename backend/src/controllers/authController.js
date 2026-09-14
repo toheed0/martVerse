@@ -3,7 +3,11 @@ import {
   loginUser,
   refreshAccessToken,
   logoutUser,
+  requestPasswordReset,
+  resetPassword as resetUserPassword,
 } from "../services/authService.js";
+
+import { sendPasswordResetEmail } from "../services/emailService.js";
 
 // Refresh token cookie options are shared by login / refresh / logout so the
 // cookie can actually be overwritten and cleared later.
@@ -120,6 +124,71 @@ export const logout = async (req, res) => {
     return res.status(500).json({
       success: false,
       message: "Logout failed",
+    });
+  }
+};
+
+// One answer for every address, known or not. Anything that varies here — the
+// wording, the status code, even how long it takes — turns this endpoint into a
+// way of asking "does this person shop at MartVerse?" and getting a straight
+// answer.
+const RESET_REQUESTED_MESSAGE =
+  "If that email address has an account, a reset link is on its way.";
+
+export const forgotPassword = async (req, res) => {
+  try {
+    const { email } = req.body;
+
+    const reset = await requestPasswordReset(email);
+
+    if (reset) {
+      try {
+        await sendPasswordResetEmail({
+          to: reset.email,
+          name: reset.name,
+          token: reset.token,
+          expiresInMinutes: reset.expiresInMinutes,
+        });
+      } catch (error) {
+        // The token is already stored, so the only thing lost is the delivery.
+        // Logged rather than surfaced: telling the caller that sending failed
+        // would confirm the address exists, which is what this avoids.
+        console.error(`Failed to send the reset email to ${reset.email}`, error);
+      }
+    }
+
+    return res.status(200).json({
+      success: true,
+      message: RESET_REQUESTED_MESSAGE,
+    });
+  } catch (error) {
+    // Only a malformed request reaches here — an unknown address is not an
+    // error, it is the answer above.
+    return res.status(error.statusCode || 400).json({
+      success: false,
+      message: error.message,
+    });
+  }
+};
+
+export const resetPassword = async (req, res) => {
+  try {
+    const { token, password } = req.body;
+
+    await resetUserPassword({ token, password });
+
+    // Every session was just invalidated, this browser's included, so the
+    // stale cookie has to go with them rather than sit there failing later.
+    res.clearCookie("refreshToken", refreshCookieOptions);
+
+    return res.status(200).json({
+      success: true,
+      message: "Your password has been changed. Sign in with your new one.",
+    });
+  } catch (error) {
+    return res.status(error.statusCode || 400).json({
+      success: false,
+      message: error.message,
     });
   }
 };

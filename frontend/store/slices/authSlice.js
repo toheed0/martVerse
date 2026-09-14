@@ -35,6 +35,42 @@ export const login = createAsyncThunk(
   }
 );
 
+// Asks for a reset link. The reply is the same whether or not the address is
+// known, so there is nothing here worth branching on — the message is shown
+// verbatim either way.
+export const forgotPassword = createAsyncThunk(
+  "auth/forgotPassword",
+  async (email, { rejectWithValue }) => {
+    try {
+      const { data } = await api.post("/auth/forgot-password", { email });
+      return data.message;
+    } catch (error) {
+      return rejectWithValue(getErrorMessage(error));
+    }
+  }
+);
+
+// Finishes a reset with the token out of the emailed link. Every session is
+// invalidated server-side by this, including one open in this very browser, so
+// the in-memory access token has to go with them.
+export const resetPassword = createAsyncThunk(
+  "auth/resetPassword",
+  async ({ token, password }, { rejectWithValue }) => {
+    try {
+      const { data } = await api.post("/auth/reset-password", {
+        token,
+        password,
+      });
+
+      setAccessToken(null);
+
+      return data.message;
+    } catch (error) {
+      return rejectWithValue(getErrorMessage(error));
+    }
+  }
+);
+
 // Runs once on app start. The access token is only in memory, so after a
 // reload we swap the refresh cookie for a new one and re-fetch the user.
 export const restoreSession = createAsyncThunk(
@@ -101,6 +137,42 @@ const authSlice = createSlice({
         state.successMessage = action.payload.message;
       })
       .addCase(register.rejected, (state, action) => {
+        state.loading = false;
+        state.error = action.payload;
+      })
+
+      // Forgot / reset password. Both are public and neither signs anyone in,
+      // so they only ever touch the feedback fields.
+      .addCase(forgotPassword.pending, (state) => {
+        state.loading = true;
+        state.error = null;
+        state.successMessage = null;
+      })
+      .addCase(forgotPassword.fulfilled, (state, action) => {
+        state.loading = false;
+        state.successMessage = action.payload;
+      })
+      .addCase(forgotPassword.rejected, (state, action) => {
+        state.loading = false;
+        state.error = action.payload;
+      })
+
+      .addCase(resetPassword.pending, (state) => {
+        state.loading = true;
+        state.error = null;
+        state.successMessage = null;
+      })
+      .addCase(resetPassword.fulfilled, (state, action) => {
+        state.loading = false;
+        state.successMessage = action.payload;
+
+        // The server just invalidated every session. Anyone who happened to be
+        // signed in here is signed out too, rather than left holding a token
+        // the next request would reject.
+        state.user = null;
+        state.isAuthenticated = false;
+      })
+      .addCase(resetPassword.rejected, (state, action) => {
         state.loading = false;
         state.error = action.payload;
       })

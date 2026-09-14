@@ -37,11 +37,29 @@ const userSchema = new mongoose.Schema(
   type: String,
   default: null,
  },
+
+    // Only the sha256 of the reset token is kept. A leaked database then hands
+    // an attacker nothing usable — the raw token exists solely in the email,
+    // and nowhere on this side of the wire.
+    passwordResetTokenHash: {
+      type: String,
+      default: null,
+    },
+
+    passwordResetExpiresAt: {
+      type: Date,
+      default: null,
+    },
   },
   {
     timestamps: true,
   }
 );
+
+// Reset links are looked up by their hash alone, so this is the only index that
+// path can use. Sparse because the field is null for everyone not mid-reset,
+// which is nearly everyone.
+userSchema.index({ passwordResetTokenHash: 1 }, { sparse: true });
 
 const User = mongoose.model("User", userSchema);
 

@@ -192,3 +192,90 @@ export const logoutUser = async (refreshToken) => {
     { $set: { refreshTokenHash: null } }
   );
 };
+
+// How long a reset link stays usable. Long enough to walk to another device and
+// find the mail, short enough that a link left sitting in an inbox is not a
+// standing key to the account.
+const RESET_TOKEN_TTL_MINUTES = 30;
+
+// Starts a reset. Deliberately says nothing about whether the address is known:
+// the controller answers identically either way, because an endpoint that
+// distinguishes them is a free tool for working out who banks here.
+export const requestPasswordReset = async (email) => {
+  if (!email || !EMAIL_REGEX.test(email)) {
+    throw createError("A valid email address is required", 400);
+  }
+
+  const user = await User.findOne({ email: email.toLowerCase().trim() });
+
+  // No such account. Nothing to do, and nothing to report.
+  if (!user) return null;
+
+  // 32 bytes of CSPRNG output. Long enough that guessing is not a strategy,
+  // and hex so it survives a query string untouched.
+  const token = crypto.randomBytes(32).toString("hex");
+
+  // Only the digest is stored. Issuing a new link also invalidates whatever
+  // came before it, since there is one slot and this overwrites it.
+  user.passwordResetTokenHash = hashToken(token);
+  user.passwordResetExpiresAt = new Date(
+    Date.now() + RESET_TOKEN_TTL_MINUTES * 60 * 1000
+  );
+
+  await user.save();
+
+  return {
+    email: user.email,
+    name: user.name,
+    token,
+    expiresInMinutes: RESET_TOKEN_TTL_MINUTES,
+  };
+};
+
+// Finishes a reset. The token is the only credential here — it has to prove
+// both who the user is and that they still hold the mailbox.
+export const resetPassword = async ({ token, password }) => {
+  if (!token) {
+    throw createError("Reset token is required", 400);
+  }
+
+  if (!password || password.length < MIN_PASSWORD_LENGTH) {
+    throw createError(
+      `Password must be at least ${MIN_PASSWORD_LENGTH} characters`,
+      400
+    );
+  }
+
+  // Expiry is part of the query, not a check after it. A token that timed out
+  // simply matches nothing, so there is no window between reading and deciding.
+  const user = await User.findOne({
+    passwordResetTokenHash: hashToken(token),
+    passwordResetExpiresAt: { $gt: new Date() },
+  });
+
+  if (!user) {
+    // Used, expired, or never real — all three look the same from outside, and
+    // should: distinguishing them tells an attacker which guesses were close.
+    throw createError("This reset link is invalid or has expired", 400);
+  }
+
+  user.password = await bcrypt.hash(password, 10);
+
+  // One use only. Clearing the slot is what stops the same link being replayed
+  // out of a browser history or a forwarded email.
+  user.passwordResetTokenHash = null;
+  user.passwordResetExpiresAt = null;
+
+  // The whole point of a reset is often that someone else got in. Dropping the
+  // refresh token hash ends every session that is already open, so a thief
+  // holding a live one is signed out rather than left there.
+  user.refreshTokenHash = null;
+
+  await user.save();
+
+  return {
+    id: user._id,
+    name: user.name,
+    email: user.email,
+  };
+};
