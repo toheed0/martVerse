@@ -8,6 +8,7 @@ import {
   fetchMyProducts,
   updateProduct,
 } from "@/store/slices/productSlice";
+import VendorTabs from "./VendorTabs";
 import ProductForm from "@/components/products/ProductForm";
 import ProductImage from "@/components/products/ProductImage";
 import Button from "@/components/ui/Button";
@@ -50,7 +51,9 @@ export default function ProductManager() {
 
   return (
     <div className="mx-auto w-full max-w-7xl px-5 py-12 lg:px-8 lg:py-16">
-      <div className="flex flex-wrap items-end justify-between gap-4">
+      <VendorTabs />
+
+      <div className="mt-8 flex flex-wrap items-end justify-between gap-4">
         <div>
           <p className="eyebrow text-brass">Vendor</p>
           <h1 className="mt-3 font-display text-4xl font-semibold tracking-tight text-ink sm:text-5xl">

@@ -28,6 +28,12 @@ export default function CartView() {
     if (status === "idle") dispatch(fetchCart());
   }, [status, dispatch]);
 
+  // The backend refuses the whole order if any line is no longer active, so
+  // block the button rather than send a request that is certain to fail.
+  const hasUnavailable = items.some(
+    (item) => item.productId.status !== "active"
+  );
+
   return (
     <div className="mx-auto w-full max-w-5xl px-5 py-12 lg:px-8 lg:py-16">
       <p className="eyebrow text-brass">Your bag</p>
@@ -221,19 +227,29 @@ export default function CartView() {
             </button>
           </div>
 
-          <button
-            type="button"
-            disabled
-            className="mt-6 flex h-14 w-full items-center justify-center rounded-full bg-pine text-sm font-semibold text-canvas disabled:cursor-not-allowed disabled:opacity-50"
-          >
-            Checkout
-          </button>
+          {/* A disabled <Link> is still a working link, so the unavailable
+              case renders as a plain button that goes nowhere. */}
+          {hasUnavailable ? (
+            <button
+              type="button"
+              disabled
+              className="mt-6 flex h-14 w-full cursor-not-allowed items-center justify-center rounded-full bg-pine text-sm font-semibold text-canvas opacity-50"
+            >
+              Checkout
+            </button>
+          ) : (
+            <Link
+              href="/checkout"
+              className="mt-6 flex h-14 w-full items-center justify-center rounded-full bg-pine text-sm font-semibold text-canvas transition-colors hover:bg-pine-soft"
+            >
+              Checkout
+            </Link>
+          )}
 
-          {/* Orders have no API yet, so saying so beats a button that looks
-              live and does nothing. */}
           <p className="mt-3 text-center text-xs text-muted">
-            Checkout isn&apos;t built yet — your bag is saved to your account in
-            the meantime.
+            {hasUnavailable
+              ? "Remove the unavailable item before checking out."
+              : "Next: where it goes and how you want to pay."}
           </p>
         </div>
       ) : null}

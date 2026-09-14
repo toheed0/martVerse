@@ -1,6 +1,7 @@
 import { createSlice, createAsyncThunk } from "@reduxjs/toolkit";
 import api, { getErrorMessage } from "@/lib/api";
 import { logout } from "./authSlice";
+import { placeOrder } from "./orderSlice";
 
 // Every /cart endpoint is buyer-only on the backend, so nothing here fires
 // until the session is restored and the user turns out to be a buyer.
@@ -165,6 +166,11 @@ const cartSlice = createSlice({
       .addCase(clearCart.rejected, (state, action) => {
         state.clearing = false;
         state.actionError = action.payload;
+      })
+
+      // Checkout consumes the whole cart on the server.
+      .addCase(placeOrder.fulfilled, (state) => {
+        state.items = [];
       })
 
       // Without this the next person to sign in on this browser would briefly

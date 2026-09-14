@@ -3,6 +3,16 @@
 export const formatPrice = (value) =>
   `Rs ${Number(value || 0).toLocaleString("en-PK")}`;
 
+// Order dates read as "9 Sep 2026" rather than a locale-dependent slash date.
+export const formatDate = (value) =>
+  value
+    ? new Date(value).toLocaleDateString("en-GB", {
+        day: "numeric",
+        month: "short",
+        year: "numeric",
+      })
+    : "";
+
 // Stock is shown as a short status rather than a raw count, so a shopper sees
 // urgency instead of inventory data.
 export const stockLabel = (stock) => {

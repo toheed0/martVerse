@@ -4,15 +4,13 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 
 const tabs = [
-  { href: "/admin/categories", label: "Categories" },
-  { href: "/admin/vendors", label: "Vendors" },
-  { href: "/admin/products", label: "Products" },
-  { href: "/admin/orders", label: "Orders" },
+  { href: "/vendor/products", label: "Products" },
+  { href: "/vendor/orders", label: "Orders" },
 ];
 
-// The navbar only has room for one admin link, so the admin area carries its
-// own switcher between the management screens.
-export default function AdminTabs() {
+// The navbar only has room for one vendor link, so the vendor area carries its
+// own switcher — the same arrangement the admin area uses.
+export default function VendorTabs() {
   const pathname = usePathname();
 
   return (
