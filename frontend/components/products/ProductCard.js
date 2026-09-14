@@ -1,5 +1,7 @@
 import Link from "next/link";
 import ProductImage from "./ProductImage";
+import { Stars } from "@/components/reviews/Stars";
+import WishlistButton from "@/components/account/WishlistButton";
 import { formatPrice, stockLabel } from "@/lib/format";
 
 const tints = ["bg-tint-1", "bg-tint-2", "bg-tint-3", "bg-tint-4"];
@@ -10,7 +12,11 @@ export default function ProductCard({ product, index = 0 }) {
   const category = product.categoryId?.name;
 
   return (
-    <article className="group">
+    <article className="group relative">
+      <div className="absolute top-3 right-3 z-10">
+        <WishlistButton productId={product._id} size="h-9 w-9" />
+      </div>
+
       <Link href={`/products/${product._id}`} className="block">
         <div
           className={`relative flex h-64 items-center justify-center overflow-hidden rounded-2xl text-pine transition-transform duration-300 group-hover:-translate-y-1 ${
@@ -49,9 +55,20 @@ export default function ProductCard({ product, index = 0 }) {
           ) : null}
         </div>
 
-        <p className="mt-2 text-sm font-semibold text-ink">
-          {formatPrice(product.price)}
-        </p>
+        <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1">
+          <p className="text-sm font-semibold text-ink">
+            {formatPrice(product.price)}
+          </p>
+
+          {/* Nothing at all until someone has rated it — an empty row of stars
+              looks like a one-star product rather than a new one. */}
+          {product.ratingCount > 0 ? (
+            <span className="flex items-center gap-1.5">
+              <Stars value={product.ratingAverage} className="h-3.5 w-3.5" />
+              <span className="text-xs text-muted">({product.ratingCount})</span>
+            </span>
+          ) : null}
+        </div>
       </Link>
     </article>
   );

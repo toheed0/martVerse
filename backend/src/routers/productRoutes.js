@@ -7,10 +7,12 @@ import {
   getMyProductsController,
   getProductByIdController,
   updateProductController,
+  uploadProductImagesController,
 } from "../controllers/productController.js";
 
 import { protect } from "../middleware/auth.middleware.js";
 import requireRole from "../middleware/role.middleware.js";
+import { uploadProductImages } from "../middleware/upload.middleware.js";
 
 const router = express.Router();
 
@@ -19,6 +21,17 @@ router.post(
   protect,
   requireRole("vendor"),
   createProductController
+);
+
+// The parser runs last on purpose — no point buffering 25MB of photos from
+// someone who turns out not to be a vendor. Admins are here too so they can
+// fix a listing without handing the vendor's account back and forth.
+router.post(
+  "/images",
+  protect,
+  requireRole("vendor", "admin"),
+  uploadProductImages,
+  uploadProductImagesController
 );
 
 router.get(

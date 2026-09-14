@@ -1,16 +1,33 @@
 "use client";
 
 import { useState } from "react";
+import api, { getErrorMessage } from "@/lib/api";
+import Alert from "@/components/ui/Alert";
 
 export default function Newsletter() {
   const [email, setEmail] = useState("");
-  const [subscribed, setSubscribed] = useState(false);
+  const [message, setMessage] = useState(null);
+  const [error, setError] = useState(null);
+  const [saving, setSaving] = useState(false);
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    // No newsletter endpoint on the backend yet, so just confirm locally.
-    setSubscribed(true);
-    setEmail("");
+
+    setSaving(true);
+    setError(null);
+
+    try {
+      // Signing up twice is an upsert on the server, so a second submit is a
+      // no-op rather than something this has to guard against.
+      const { data } = await api.post("/newsletter", { email });
+
+      setMessage(data.message);
+      setEmail("");
+    } catch (err) {
+      setError(getErrorMessage(err));
+    } finally {
+      setSaving(false);
+    }
   };
 
   return (
@@ -25,9 +42,9 @@ export default function Newsletter() {
           unsubscribe anytime.
         </p>
 
-        {subscribed ? (
+        {message ? (
           <p className="mt-8 rounded-full border border-pine/20 bg-pine/10 px-6 py-3 text-sm font-medium text-pine">
-            You&apos;re on the list. Look out for Thursday&apos;s edit.
+            {message}
           </p>
         ) : (
           <form
@@ -45,12 +62,19 @@ export default function Newsletter() {
             />
             <button
               type="submit"
-              className="h-12 rounded-full bg-ink px-7 text-sm font-semibold text-canvas transition-colors hover:bg-pine"
+              disabled={saving}
+              className="h-12 rounded-full bg-ink px-7 text-sm font-semibold text-canvas transition-colors hover:bg-pine disabled:opacity-50"
             >
-              Subscribe
+              {saving ? "Adding..." : "Subscribe"}
             </button>
           </form>
         )}
+
+        {error ? (
+          <div className="mx-auto mt-4 max-w-md text-left">
+            <Alert type="error">{error}</Alert>
+          </div>
+        ) : null}
       </div>
     </section>
   );

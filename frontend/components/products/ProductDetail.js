@@ -10,6 +10,9 @@ import { artFor } from "./ProductImage";
 import AddToCartButton from "@/components/cart/AddToCartButton";
 import { formatPrice, stockLabel } from "@/lib/format";
 import { ArrowIcon } from "@/components/ui/icons";
+import { Stars } from "@/components/reviews/Stars";
+import ProductReviews from "@/components/reviews/ProductReviews";
+import WishlistButton from "@/components/account/WishlistButton";
 
 const stockStyles = {
   in: "border-pine/25 bg-pine/10 text-pine",
@@ -151,6 +154,24 @@ export default function ProductDetail() {
             {current.name}
           </h1>
 
+          {/* Only shown once somebody has actually rated it — five grey stars
+              on a new listing reads as a bad score rather than no score. */}
+          {current.ratingCount > 0 ? (
+            <a
+              href="#reviews"
+              className="mt-3 inline-flex items-center gap-2 text-sm text-muted transition-colors hover:text-ink"
+            >
+              <Stars value={current.ratingAverage} />
+              <span className="font-semibold text-ink">
+                {current.ratingAverage.toFixed(1)}
+              </span>
+              <span>
+                ({current.ratingCount}{" "}
+                {current.ratingCount === 1 ? "review" : "reviews"})
+              </span>
+            </a>
+          ) : null}
+
           <p className="mt-5 font-display text-3xl font-semibold text-ink">
             {formatPrice(current.price)}
           </p>
@@ -183,7 +204,16 @@ export default function ProductDetail() {
             </p>
           </div>
 
-          <AddToCartButton product={current} />
+          <div className="flex items-end gap-3">
+            <div className="min-w-0 flex-1">
+              <AddToCartButton product={current} />
+            </div>
+            <WishlistButton
+              productId={current._id}
+              size="h-14 w-14"
+              className="shrink-0 border border-line"
+            />
+          </div>
 
           <Link
             href="/products"
@@ -193,6 +223,10 @@ export default function ProductDetail() {
             <ArrowIcon className="h-4 w-4 transition-transform group-hover:translate-x-1" />
           </Link>
         </div>
+      </div>
+
+      <div id="reviews" className="mt-16 scroll-mt-24">
+        <ProductReviews product={current} />
       </div>
     </div>
   );

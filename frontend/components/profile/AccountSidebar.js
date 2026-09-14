@@ -12,16 +12,20 @@ import {
   UserIcon,
 } from "@/components/ui/icons";
 
-// An entry with an href is built; the rest are listed so the account area reads
-// like a real storefront, but they're marked instead of pretending to work.
-// `buyerOnly` keeps Orders out of the way for vendors and admins, who have no
-// cart and would only land on a "not authorised" screen.
+// `buyerOnly` keeps the shopping half out of the way for vendors and admins,
+// who have no cart and would only land on a "not authorised" screen. Security
+// is for everyone — every account has a password.
 const items = [
   { label: "Profile", icon: UserIcon, href: "/profile" },
   { label: "Orders", icon: BagIcon, href: "/orders", buyerOnly: true },
-  { label: "Wishlist", icon: SparkIcon },
-  { label: "Addresses", icon: ReturnIcon },
-  { label: "Security", icon: ShieldIcon },
+  { label: "Wishlist", icon: SparkIcon, href: "/wishlist", buyerOnly: true },
+  {
+    label: "Addresses",
+    icon: ReturnIcon,
+    href: "/profile/addresses",
+    buyerOnly: true,
+  },
+  { label: "Security", icon: ShieldIcon, href: "/profile/security" },
 ];
 
 const rowClass = "flex items-center gap-3 rounded-xl px-4 py-3 text-sm";
@@ -39,32 +43,25 @@ export default function AccountSidebar() {
     <nav className="lg:col-span-3">
       <ul className="space-y-1">
         {visible.map((item) => {
-          const active = item.href && pathname.startsWith(item.href);
+          // "/profile" is a prefix of "/profile/addresses", so a plain
+          // startsWith would light up two rows at once on the sub-pages.
+          const active =
+            item.href === "/profile"
+              ? pathname === "/profile"
+              : pathname.startsWith(item.href);
 
           return (
             <li key={item.label}>
-              {item.href ? (
-                <Link
-                  href={item.href}
-                  aria-current={active ? "page" : undefined}
-                  className={`${rowClass} font-semibold transition-colors ${
-                    active
-                      ? "bg-pine text-canvas"
-                      : "text-ink hover:bg-ink/5"
-                  }`}
-                >
-                  <item.icon className="h-[18px] w-[18px]" />
-                  <span>{item.label}</span>
-                </Link>
-              ) : (
-                <div className={`${rowClass} cursor-not-allowed text-muted/70`}>
-                  <item.icon className="h-[18px] w-[18px]" />
-                  <span className="font-medium">{item.label}</span>
-                  <span className="ml-auto rounded-full border border-line px-2 py-0.5 text-[0.6rem] tracking-wider uppercase">
-                    Soon
-                  </span>
-                </div>
-              )}
+              <Link
+                href={item.href}
+                aria-current={active ? "page" : undefined}
+                className={`${rowClass} font-semibold transition-colors ${
+                  active ? "bg-pine text-canvas" : "text-ink hover:bg-ink/5"
+                }`}
+              >
+                <item.icon className="h-[18px] w-[18px]" />
+                <span>{item.label}</span>
+              </Link>
             </li>
           );
         })}

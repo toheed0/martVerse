@@ -30,7 +30,9 @@ export default function OrderList() {
   }, [status, dispatch]);
 
   return (
-    <div className="mx-auto w-full max-w-5xl px-5 py-12 lg:px-8 lg:py-16">
+    // No page-level width or padding here: this sits inside the account grid
+    // alongside the sidebar, and a second max-width would fight it.
+    <div>
       <p className="eyebrow text-brass">Your account</p>
       <h1 className="mt-3 font-display text-4xl font-semibold tracking-tight text-ink sm:text-5xl">
         Orders

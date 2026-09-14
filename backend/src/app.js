@@ -8,6 +8,9 @@ import userRoutes from "./routers/userRoutes.js";
 import cartRoutes from "./routers/cartRoutes.js";
 import orderRoutes from "./routers/orderRoutes.js";
 import webhookRoutes from "./routers/webhookRoutes.js";
+import newsletterRoutes from "./routers/newsletterRoutes.js";
+import accountRoutes from "./routers/accountRoutes.js";
+import reviewRoutes from "./routers/reviewRoutes.js";
 
 // The Express app on its own — wired up but not listening. server.js owns the
 // environment, the database connection and the port; keeping those out of here
@@ -44,6 +47,12 @@ app.use("/api/users", userRoutes);
 app.use("/api/cart", cartRoutes);
 
 app.use("/api/orders", orderRoutes);
+
+app.use("/api/newsletter", newsletterRoutes);
+
+app.use("/api/account", accountRoutes);
+
+app.use("/api/reviews", reviewRoutes);
 
 // Anything that reached this far matched no route.
 app.use((req, res) => {

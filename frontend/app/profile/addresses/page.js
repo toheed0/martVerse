@@ -1,30 +1,29 @@
 import Navbar from "@/components/layout/Navbar";
 import Footer from "@/components/layout/Footer";
-import RequireRole from "@/components/auth/RequireRole";
+import RequireAuth from "@/components/auth/RequireAuth";
 import AccountSidebar from "@/components/profile/AccountSidebar";
-import OrderList from "@/components/orders/OrderList";
+import AddressManager from "@/components/account/AddressManager";
 
 export const metadata = {
-  title: "Your orders — MartVerse",
+  title: "Saved addresses — MartVerse",
 };
 
-export default function OrdersPage() {
+export default function AddressManagerPage() {
   return (
     <>
       <Navbar />
+
       <main className="flex flex-1 flex-col">
-        <RequireRole roles={["buyer"]}>
-          {/* Orders is a row in the account sidebar, so it has to keep the
-              sidebar the way Profile, Wishlist and Addresses do — otherwise
-              clicking it drops the shopper out of the account area. */}
+        <RequireAuth>
           <div className="mx-auto grid w-full max-w-7xl gap-8 px-5 py-12 lg:grid-cols-12 lg:px-8 lg:py-16">
             <AccountSidebar />
             <div className="lg:col-span-9">
-              <OrderList />
+              <AddressManager />
             </div>
           </div>
-        </RequireRole>
+        </RequireAuth>
       </main>
+
       <Footer />
     </>
   );

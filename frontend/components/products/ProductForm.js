@@ -1,7 +1,8 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
+import api, { getErrorMessage } from "@/lib/api";
 import {
   clearSaveError,
   createProduct,
@@ -12,6 +13,10 @@ import Input from "@/components/ui/Input";
 import Button from "@/components/ui/Button";
 import Alert from "@/components/ui/Alert";
 import { CloseIcon } from "@/components/ui/icons";
+
+// Mirrors MAX_PRODUCT_IMAGES in upload.middleware.js. The server is what
+// enforces it; this only stops the picker offering a sixth slot.
+const MAX_IMAGES = 5;
 
 const emptyForm = {
   name: "",
@@ -48,10 +53,19 @@ export default function ProductForm({ editing, onDone, onCancel }) {
   );
 
   const [form, setForm] = useState(() => buildForm(editing));
-  // One trailing blank row so there is always somewhere to paste a URL.
-  const [images, setImages] = useState(() =>
-    editing?.images?.length ? [...editing.images, ""] : [""]
-  );
+  const [images, setImages] = useState(() => editing?.images ?? []);
+
+  const [uploading, setUploading] = useState(false);
+  // Upload failures never reach Redux — the URLs that come back live in this
+  // component's state, so nothing in the store would have a use for them.
+  const [uploadError, setUploadError] = useState(null);
+
+  // Pasting a URL still works for a picture already hosted somewhere, but it
+  // is the exception now, so it stays folded away until asked for.
+  const [urlEntry, setUrlEntry] = useState("");
+  const [showUrlEntry, setShowUrlEntry] = useState(false);
+
+  const fileInputRef = useRef(null);
 
   useEffect(() => {
     dispatch(clearSaveError());
@@ -64,20 +78,60 @@ export default function ProductForm({ editing, onDone, onCancel }) {
   const setField = (key) => (e) =>
     setForm((prev) => ({ ...prev, [key]: e.target.value }));
 
-  const setImage = (index, value) =>
-    setImages((prev) => {
-      const next = [...prev];
-      next[index] = value;
-      // Typing in the last row opens a fresh one below it.
-      if (value && index === next.length - 1) next.push("");
-      return next;
-    });
-
   const removeImage = (index) =>
-    setImages((prev) => {
-      const next = prev.filter((_, i) => i !== index);
-      return next.length ? next : [""];
-    });
+    setImages((prev) => prev.filter((_, i) => i !== index));
+
+  const addUrl = () => {
+    const url = urlEntry.trim();
+    if (!url) return;
+
+    setImages((prev) => [...prev, url].slice(0, MAX_IMAGES));
+    setUrlEntry("");
+    setShowUrlEntry(false);
+  };
+
+  const handleFiles = async (event) => {
+    const picked = Array.from(event.target.files ?? []);
+
+    // Letting the same file be picked twice in a row needs the input cleared,
+    // since re-selecting an identical path fires no change event otherwise.
+    event.target.value = "";
+
+    if (!picked.length) return;
+
+    const room = MAX_IMAGES - images.length;
+
+    if (room <= 0) {
+      setUploadError(`You can have at most ${MAX_IMAGES} images`);
+      return;
+    }
+
+    setUploading(true);
+    setUploadError(null);
+
+    try {
+      const body = new FormData();
+      // Trimmed to what will actually fit rather than uploading files the
+      // server would only refuse.
+      picked.slice(0, room).forEach((file) => body.append("images", file));
+
+      // Content-Type is left unset on purpose: the browser has to add the
+      // multipart boundary itself, and naming the type would overwrite it.
+      const { data } = await api.post("/products/images", body);
+
+      setImages((prev) => [...prev, ...data.images].slice(0, MAX_IMAGES));
+
+      if (picked.length > room) {
+        setUploadError(
+          `Only the first ${room} went up — ${MAX_IMAGES} images is the limit`
+        );
+      }
+    } catch (error) {
+      setUploadError(getErrorMessage(error));
+    } finally {
+      setUploading(false);
+    }
+  };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -198,37 +252,110 @@ export default function ProductForm({ editing, onDone, onCancel }) {
 
         <div className="space-y-2">
           <span className="block text-xs font-semibold tracking-[0.12em] uppercase text-muted">
-            Image URLs
+            Images
           </span>
 
-          <div className="space-y-2">
+          <div className="grid grid-cols-3 gap-3 sm:grid-cols-4">
             {images.map((url, index) => (
-              <div key={index} className="flex items-center gap-2">
-                <input
-                  type="url"
-                  value={url}
-                  placeholder="https://..."
-                  aria-label={`Image URL ${index + 1}`}
-                  onChange={(e) => setImage(index, e.target.value)}
-                  className={`${fieldClass} h-12`}
+              <div
+                key={`${url}-${index}`}
+                className="group relative aspect-square overflow-hidden rounded-xl border border-line bg-sand"
+              >
+                {/* A vendor URL can point at any host, and next/image would
+                    need every one of them allowlisted in next.config. */}
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
+                  src={url}
+                  alt={`Product image ${index + 1}`}
+                  className="h-full w-full object-cover"
                 />
-                {images.length > 1 ? (
-                  <button
-                    type="button"
-                    onClick={() => removeImage(index)}
-                    aria-label={`Remove image ${index + 1}`}
-                    className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl text-muted transition-colors hover:bg-clay/10 hover:text-clay"
-                  >
-                    <CloseIcon className="h-4 w-4" />
-                  </button>
+
+                {index === 0 ? (
+                  <span className="absolute bottom-1 left-1 rounded-full bg-ink/80 px-2 py-0.5 text-[0.55rem] font-semibold tracking-wider uppercase text-canvas">
+                    Thumbnail
+                  </span>
                 ) : null}
+
+                <button
+                  type="button"
+                  onClick={() => removeImage(index)}
+                  aria-label={`Remove image ${index + 1}`}
+                  className="absolute top-1 right-1 flex h-7 w-7 items-center justify-center rounded-full bg-ink/70 text-canvas transition-colors hover:bg-clay"
+                >
+                  <CloseIcon className="h-3.5 w-3.5" />
+                </button>
               </div>
             ))}
+
+            {uploading ? (
+              <div className="flex aspect-square animate-pulse items-center justify-center rounded-xl border border-dashed border-line bg-sand text-xs font-semibold text-muted">
+                Uploading...
+              </div>
+            ) : null}
+
+            {images.length < MAX_IMAGES && !uploading ? (
+              <button
+                type="button"
+                onClick={() => fileInputRef.current?.click()}
+                className="flex aspect-square flex-col items-center justify-center gap-1 rounded-xl border border-dashed border-line text-muted transition-colors hover:border-pine hover:bg-pine/5 hover:text-pine"
+              >
+                <span className="text-2xl leading-none">+</span>
+                <span className="text-xs font-semibold">Add images</span>
+              </button>
+            ) : null}
           </div>
 
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept="image/jpeg,image/png,image/webp,image/avif,image/gif"
+            multiple
+            onChange={handleFiles}
+            className="sr-only"
+          />
+
+          <Alert type="error">{uploadError}</Alert>
+
           <p className="text-xs text-muted">
-            The first image is used as the product thumbnail.
+            {images.length === 0
+              ? `JPG, PNG, WebP, AVIF or GIF — up to ${MAX_IMAGES} images, 5MB each.`
+              : `The first image is the thumbnail. ${images.length} of ${MAX_IMAGES} used.`}
           </p>
+
+          {showUrlEntry ? (
+            <div className="flex items-center gap-2 pt-1">
+              <input
+                type="url"
+                value={urlEntry}
+                placeholder="https://..."
+                aria-label="Image URL"
+                onChange={(e) => setUrlEntry(e.target.value)}
+                // Enter would otherwise submit the whole product form.
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") {
+                    e.preventDefault();
+                    addUrl();
+                  }
+                }}
+                className={`${fieldClass} h-11`}
+              />
+              <button
+                type="button"
+                onClick={addUrl}
+                className="h-11 shrink-0 rounded-xl border border-ink/20 px-4 text-sm font-semibold text-ink transition-colors hover:border-ink hover:bg-ink/5"
+              >
+                Add
+              </button>
+            </div>
+          ) : images.length < MAX_IMAGES ? (
+            <button
+              type="button"
+              onClick={() => setShowUrlEntry(true)}
+              className="text-xs font-semibold text-muted underline underline-offset-4 transition-colors hover:text-ink"
+            >
+              Or paste a URL instead
+            </button>
+          ) : null}
         </div>
 
         {editing ? (

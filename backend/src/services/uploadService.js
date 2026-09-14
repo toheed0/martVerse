@@ -2,6 +2,10 @@ import cloudinary, { isCloudinaryConfigured } from "../config/cloudinary.js";
 
 const CATEGORY_FOLDER = "martverse/categories";
 
+// Kept apart from the category art so the two can be browsed, quota-checked and
+// cleaned up independently in the Cloudinary console.
+export const PRODUCT_FOLDER = "martverse/products";
+
 // Cloudinary reports a scoped key that can authenticate but isn't allowed to
 // upload as a bare "Server returned unexpected status code - 403", which tells
 // an admin nothing. Translate the two auth failures into something they can

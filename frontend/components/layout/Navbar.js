@@ -1,7 +1,8 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useDispatch, useSelector } from "react-redux";
 import { logout } from "@/store/slices/authSlice";
 import { selectCartCount } from "@/store/slices/cartSlice";
@@ -42,7 +43,33 @@ export default function Navbar() {
     (state) => state.auth
   );
   const cartCount = useSelector(selectCartCount);
+  const router = useRouter();
   const [menuOpen, setMenuOpen] = useState(false);
+
+  const [searchOpen, setSearchOpen] = useState(false);
+  const [query, setQuery] = useState("");
+  const searchInputRef = useRef(null);
+
+  // Opening the row and then having to click into it would make the button
+  // feel like it did half a job.
+  useEffect(() => {
+    if (searchOpen) searchInputRef.current?.focus();
+  }, [searchOpen]);
+
+  // /products already reads `search` off the query string and filters on it,
+  // so this only has to get the shopper there with the right URL.
+  const submitSearch = (event) => {
+    event.preventDefault();
+
+    const term = query.trim();
+    if (!term) return;
+
+    router.push(`/products?search=${encodeURIComponent(term)}`);
+
+    setSearchOpen(false);
+    setMenuOpen(false);
+    setQuery("");
+  };
 
   return (
     <header className="sticky top-0 z-50 border-b border-line bg-canvas/85 backdrop-blur-md">
@@ -70,10 +97,12 @@ export default function Navbar() {
         <div className="flex items-center gap-1.5">
           <button
             type="button"
-            aria-label="Search"
+            aria-label={searchOpen ? "Close search" : "Search"}
+            aria-expanded={searchOpen}
+            onClick={() => setSearchOpen((open) => !open)}
             className="hidden h-10 w-10 items-center justify-center rounded-full text-ink transition-colors hover:bg-ink/5 sm:flex"
           >
-            <SearchIcon />
+            {searchOpen ? <CloseIcon /> : <SearchIcon />}
           </button>
 
           <Link
@@ -154,8 +183,59 @@ export default function Navbar() {
         </div>
       </nav>
 
+      {searchOpen ? (
+        <div className="border-t border-line bg-canvas">
+          <form
+            onSubmit={submitSearch}
+            className="mx-auto flex max-w-7xl items-center gap-3 px-5 py-4 lg:px-8"
+          >
+            <SearchIcon className="h-5 w-5 shrink-0 text-muted" />
+            <input
+              ref={searchInputRef}
+              type="search"
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Escape") setSearchOpen(false);
+              }}
+              placeholder="Search products"
+              aria-label="Search products"
+              className="h-10 flex-1 bg-transparent text-[0.95rem] text-ink outline-none placeholder:text-muted/60"
+            />
+            <button
+              type="submit"
+              disabled={!query.trim()}
+              className="h-10 shrink-0 rounded-full bg-pine px-5 text-sm font-semibold text-canvas transition-colors hover:bg-pine-soft disabled:opacity-40"
+            >
+              Search
+            </button>
+          </form>
+        </div>
+      ) : null}
+
       {menuOpen ? (
         <div className="border-t border-line bg-canvas px-5 py-4 lg:hidden">
+          {/* The search icon is hidden below sm, so the sheet is the only way
+              to search from a phone. */}
+          <form onSubmit={submitSearch} className="mb-3 flex items-center gap-2">
+            <input
+              type="search"
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+              placeholder="Search products"
+              aria-label="Search products"
+              className="h-11 flex-1 rounded-xl border border-line bg-surface px-4 text-sm text-ink outline-none transition-colors placeholder:text-muted/60 focus:border-pine"
+            />
+            <button
+              type="submit"
+              disabled={!query.trim()}
+              aria-label="Search"
+              className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-pine text-canvas disabled:opacity-40"
+            >
+              <SearchIcon className="h-4 w-4" />
+            </button>
+          </form>
+
           <ul className="space-y-1">
             {navLinks.map((link) => (
               <li key={link.label}>

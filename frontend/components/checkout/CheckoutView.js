@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useDispatch, useSelector } from "react-redux";
 import { fetchCart, selectCartTotal } from "@/store/slices/cartSlice";
+import { fetchAddresses, saveAddress } from "@/store/slices/accountSlice";
 import { placeOrder } from "@/store/slices/orderSlice";
 import OrderSummary, { cartLines, orderLines } from "./OrderSummary";
 import PaymentStep from "./PaymentStep";
@@ -55,25 +56,76 @@ export default function CheckoutView() {
     (state) => state.orders
   );
   const { user } = useSelector((state) => state.auth);
+  const { addresses, addressStatus } = useSelector((state) => state.account);
   const total = useSelector(selectCartTotal);
 
   const [form, setForm] = useState(EMPTY_ADDRESS);
   const [errors, setErrors] = useState({});
   const [method, setMethod] = useState("cod");
 
+  // The id of the saved address in use, or null while typing a new one.
+  const [selectedId, setSelectedId] = useState(null);
+  const [saveForNextTime, setSaveForNextTime] = useState(true);
+  // Set once the default has been applied, so re-picking "new address" is not
+  // undone by the effect firing again.
+  const [addressChosen, setAddressChosen] = useState(false);
+
+  useEffect(() => {
+    if (addressStatus === "idle") dispatch(fetchAddresses());
+  }, [addressStatus, dispatch]);
+
+  // Preselect the default exactly once. The list arrives default-first, so the
+  // head of it is the one to use.
+  useEffect(() => {
+    if (addressChosen || addressStatus !== "succeeded" || !addresses.length) {
+      return;
+    }
+
+    const preferred = addresses.find((entry) => entry.isDefault) ?? addresses[0];
+
+    setSelectedId(preferred._id);
+    setForm({
+      fullName: preferred.fullName,
+      phone: preferred.phone,
+      address: preferred.address,
+      city: preferred.city,
+      postalCode: preferred.postalCode || "",
+    });
+    setAddressChosen(true);
+  }, [addresses, addressStatus, addressChosen]);
+
+  const useSavedAddress = (entry) => {
+    setSelectedId(entry._id);
+    setErrors({});
+    setForm({
+      fullName: entry.fullName,
+      phone: entry.phone,
+      address: entry.address,
+      city: entry.city,
+      postalCode: entry.postalCode || "",
+    });
+  };
+
+  const useNewAddress = () => {
+    setSelectedId(null);
+    setErrors({});
+    setForm(user?.name ? { ...EMPTY_ADDRESS, fullName: user.name } : EMPTY_ADDRESS);
+  };
+
   useEffect(() => {
     if (status === "idle") dispatch(fetchCart());
   }, [status, dispatch]);
 
   // The signed-in name is the likeliest answer, and it stays editable — plenty
-  // of orders are sent to someone else.
+  // of orders are sent to someone else. Skipped once a saved address has been
+  // applied, which already carries a name of its own.
   useEffect(() => {
-    if (user?.name) {
+    if (user?.name && !addressChosen) {
       setForm((current) =>
         current.fullName ? current : { ...current, fullName: user.name }
       );
     }
-  }, [user]);
+  }, [user, addressChosen]);
 
   const setField = (field) => (event) => {
     const { value } = event.target;
@@ -106,6 +158,13 @@ export default function CheckoutView() {
     );
 
     if (result.error) return;
+
+    // Only after the order is safely placed, and never for one that came out of
+    // the address book to begin with. A failure here is not worth telling the
+    // buyer about — their order went through, which is what they came for.
+    if (!selectedId && saveForNextTime) {
+      dispatch(saveAddress({ id: null, values: form }));
+    }
 
     // Cash on delivery is finished the moment the order exists. A card order
     // comes back with a clientSecret and stays here for the payment step.
@@ -208,6 +267,81 @@ export default function CheckoutView() {
                 Delivery address
               </h2>
 
+              {/* Only worth showing once there is something to pick. A single
+                  saved address is already sitting in the fields below. */}
+              {addresses.length > 0 ? (
+                <div className="mt-5 space-y-2">
+                  {addresses.map((entry) => {
+                    const chosen = selectedId === entry._id;
+
+                    return (
+                      <button
+                        key={entry._id}
+                        type="button"
+                        onClick={() => useSavedAddress(entry)}
+                        className={`flex w-full items-start gap-3 rounded-xl border p-4 text-left transition-colors ${
+                          chosen
+                            ? "border-pine bg-pine/5"
+                            : "border-line hover:border-ink/30"
+                        }`}
+                      >
+                        <span
+                          className={`mt-0.5 flex h-4 w-4 shrink-0 items-center justify-center rounded-full border ${
+                            chosen ? "border-pine" : "border-line"
+                          }`}
+                        >
+                          {chosen ? (
+                            <span className="h-2 w-2 rounded-full bg-pine" />
+                          ) : null}
+                        </span>
+
+                        <span className="min-w-0 flex-1">
+                          <span className="flex flex-wrap items-center gap-2">
+                            <span className="text-sm font-semibold text-ink">
+                              {entry.fullName}
+                            </span>
+                            {entry.label ? (
+                              <span className="rounded-full border border-line bg-sand px-2 py-0.5 text-[0.55rem] font-semibold tracking-[0.1em] uppercase text-muted">
+                                {entry.label}
+                              </span>
+                            ) : null}
+                          </span>
+                          <span className="mt-1 block text-xs leading-relaxed text-muted">
+                            {entry.address}, {entry.city}
+                            {entry.postalCode ? ` ${entry.postalCode}` : ""}
+                            {" · "}
+                            {entry.phone}
+                          </span>
+                        </span>
+                      </button>
+                    );
+                  })}
+
+                  <button
+                    type="button"
+                    onClick={useNewAddress}
+                    className={`flex w-full items-center gap-3 rounded-xl border p-4 text-left transition-colors ${
+                      selectedId === null
+                        ? "border-pine bg-pine/5"
+                        : "border-dashed border-line hover:border-ink/30"
+                    }`}
+                  >
+                    <span
+                      className={`flex h-4 w-4 shrink-0 items-center justify-center rounded-full border ${
+                        selectedId === null ? "border-pine" : "border-line"
+                      }`}
+                    >
+                      {selectedId === null ? (
+                        <span className="h-2 w-2 rounded-full bg-pine" />
+                      ) : null}
+                    </span>
+                    <span className="text-sm font-semibold text-ink">
+                      Send somewhere else
+                    </span>
+                  </button>
+                </div>
+              ) : null}
+
               <div className="mt-6 space-y-5">
                 <Input
                   id="fullName"
@@ -260,6 +394,20 @@ export default function CheckoutView() {
                     onChange={setField("postalCode")}
                   />
                 </div>
+
+                {/* Meaningless for an address that came out of the book — it is
+                    already saved, and editing here does not write back to it. */}
+                {selectedId === null ? (
+                  <label className="flex cursor-pointer items-center gap-3 text-sm text-ink">
+                    <input
+                      type="checkbox"
+                      checked={saveForNextTime}
+                      onChange={(e) => setSaveForNextTime(e.target.checked)}
+                      className="h-4 w-4 accent-pine"
+                    />
+                    Save this address for next time
+                  </label>
+                ) : null}
               </div>
 
               <h2 className="mt-10 font-display text-xl font-semibold text-ink">

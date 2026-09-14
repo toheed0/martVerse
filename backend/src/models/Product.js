@@ -49,6 +49,24 @@ const productSchema = new mongoose.Schema(
       enum: ["active", "inactive"],
       default: "active",
     },
+
+    // Kept on the product rather than counted from the reviews collection on
+    // every read. A listing page draws twenty cards, and twenty aggregate
+    // queries to render twenty stars is the kind of thing that only hurts once
+    // there is real traffic. The review service is the only thing that writes
+    // these, and it recomputes both from scratch after every change.
+    ratingAverage: {
+      type: Number,
+      default: 0,
+      min: 0,
+      max: 5,
+    },
+
+    ratingCount: {
+      type: Number,
+      default: 0,
+      min: 0,
+    },
   },
   {
     timestamps: true,

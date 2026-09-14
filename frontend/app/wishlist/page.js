@@ -2,29 +2,30 @@ import Navbar from "@/components/layout/Navbar";
 import Footer from "@/components/layout/Footer";
 import RequireRole from "@/components/auth/RequireRole";
 import AccountSidebar from "@/components/profile/AccountSidebar";
-import OrderList from "@/components/orders/OrderList";
+import WishlistView from "@/components/account/WishlistView";
 
 export const metadata = {
-  title: "Your orders — MartVerse",
+  title: "Your wishlist — MartVerse",
 };
 
-export default function OrdersPage() {
+// Buyers only — the wishlist exists to be added to a cart, and vendors and
+// admins have neither.
+export default function WishlistPage() {
   return (
     <>
       <Navbar />
+
       <main className="flex flex-1 flex-col">
         <RequireRole roles={["buyer"]}>
-          {/* Orders is a row in the account sidebar, so it has to keep the
-              sidebar the way Profile, Wishlist and Addresses do — otherwise
-              clicking it drops the shopper out of the account area. */}
           <div className="mx-auto grid w-full max-w-7xl gap-8 px-5 py-12 lg:grid-cols-12 lg:px-8 lg:py-16">
             <AccountSidebar />
             <div className="lg:col-span-9">
-              <OrderList />
+              <WishlistView />
             </div>
           </div>
         </RequireRole>
       </main>
+
       <Footer />
     </>
   );
